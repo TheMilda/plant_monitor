@@ -3,12 +3,12 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
-use App\Repository\HebrsGardenRepository;
+use App\Repository\HerbsGardenRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: HebrsGardenRepository::class)]
+#[ORM\Entity(repositoryClass: HerbsGardenRepository::class)]
 #[ApiResource]
-class HebrsGarden
+class HerbsGarden
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

@@ -2,22 +2,22 @@
 
 namespace App\Repository;
 
-use App\Entity\HebrsGarden;
+use App\Entity\HerbsGarden;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<HebrsGarden>
+ * @extends ServiceEntityRepository<HerbsGarden>
  */
-class HebrsGardenRepository extends ServiceEntityRepository
+class HerbsGardenRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, HebrsGarden::class);
+        parent::__construct($registry, HerbsGarden::class);
     }
 
     //    /**
-    //     * @return HebrsGarden[] Returns an array of HebrsGarden objects
+    //     * @return HerbsGarden[] Returns an array of HerbsGarden objects
     //     */
     //    public function findByExampleField($value): array
     //    {
@@ -31,7 +31,7 @@ class HebrsGardenRepository extends ServiceEntityRepository
     //        ;
     //    }
 
-    //    public function findOneBySomeField($value): ?HebrsGarden
+    //    public function findOneBySomeField($value): ?HerbsGarden
     //    {
     //        return $this->createQueryBuilder('h')
     //            ->andWhere('h.exampleField = :val')

@@ -3,12 +3,12 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
-use App\Repository\POTRepository;
+use App\Repository\PotRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: POTRepository::class)]
+#[ORM\Entity(repositoryClass: PotRepository::class)]
 #[ApiResource]
-class POT
+class Pot
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
