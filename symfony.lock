@@ -52,6 +52,9 @@
             "config/routes/easyadmin.yaml"
         ]
     },
+    "javer/influxdb-odm-bundle": {
+        "version": "v1.4.0"
+    },
     "nelmio/cors-bundle": {
         "version": "2.5",
         "recipe": {
