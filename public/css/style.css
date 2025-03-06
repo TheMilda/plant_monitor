@@ -1,0 +1,83 @@
+/* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+/* Container */
+.container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Header */
+header {
+    background: #4CAF50;
+    color: white;
+    padding: 15px;
+    border-radius: 10px 10px 0 0;
+}
+
+header h1 {
+    margin: 0;
+}
+
+/* Weather Section */
+.weather, .moisture {
+    margin-top: 20px;
+}
+
+.weather h2, .moisture h2 {
+    background: #ddd;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* Grid Layout */
+.weather-grid, .moisture-grid {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 15px;
+}
+
+/* Sensor Cards */
+.card, .pot-card {
+    background: #fff;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    width: 120px;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Colors for Pot Moisture */
+.pot-card {
+    background: #e0f7fa;
+}
+
+.pot-card span {
+    font-size: 1.2em;
+    color: #00796b;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .weather-grid, .moisture-grid {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .card, .pot-card {
+        width: 80%;
+        margin-bottom: 10px;
+    }
+}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herbal Garden Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css"> <!-- Link to CSS file -->
+    <script>
+        async function fetchSensorData() {
+            try {
+                const response = await fetch('/influxdb/latest');
+                const data = await response.json();
+
+                console.log("Fetched Data:", data); // Debugging
+
+                // Extract data
+                const temperature = data.find(d => d.measurement === "temperature")?.value || "--";
+                const humidity = data.find(d => d.measurement === "humidity")?.value || "--";
+                const pressure = data.find(d => d.measurement === "pressure")?.value || "--";
+                const luminance = data.find(d => d.measurement === "luminance")?.value || "--";
+
+                const potA = data.find(d => d.measurement === "moisture_a")?.value || "--";
+                const potB = data.find(d => d.measurement === "moisture_b")?.value || "--";
+                const potC = data.find(d => d.measurement === "moisture_c")?.value || "--";
+
+                // Update UI
+                document.getElementById("temperature").innerText = `${temperature}°C`;
+                document.getElementById("humidity").innerText = `${humidity}%`;
+                document.getElementById("pressure").innerText = `${pressure} hPa`;
+                document.getElementById("luminance").innerText = `${luminance} lux`;
+
+                document.getElementById("potA").innerText = `${potA}%`;
+                document.getElementById("potB").innerText = `${potB}%`;
+                document.getElementById("potC").innerText = `${potC}%`;
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        setInterval(fetchSensorData, 10000);
+        window.onload = fetchSensorData;
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌿 Welcome Back, Milena!</h1>
+            <p id="date"></p>
+        </header>
+
+        <section class="weather">
+            <h2>🌤 Environmental Conditions</h2>
+            <div class="weather-grid">
+                <div class="card">
+                    <p>🌡 Temperature</p>
+                    <span id="temperature">--°C</span>
+                </div>
+                <div class="card">
+                    <p>💧 Humidity</p>
+                    <span id="humidity">--%</span>
+                </div>
+                <div class="card">
+                    <p>🌍 Pressure</p>
+                    <span id="pressure">-- hPa</span>
+                </div>
+                <div class="card">
+                    <p>💡 Luminance</p>
+                    <span id="luminance">-- lux</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="moisture">
+            <h2>🌱 Soil Moisture</h2>
+            <div class="moisture-grid">
+                <div class="pot-card">
+                    <p>Pot A 🌊</p>
+                    <span id="potA">--%</span>
+                </div>
+                <div class="pot-card">
+                    <p>Pot B 🌊</p>
+                    <span id="potB">--%</span>
+                </div>
+                <div class="pot-card">
+                    <p>Pot C 🌊</p>
+                    <span id="potC">--%</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        document.getElementById("date").innerText = new Date().toDateString();
+    </script>
+</body>
+</html>
