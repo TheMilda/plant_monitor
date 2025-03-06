@@ -1,0 +1,5 @@
+# config/packages/javer_influx_db.yaml
+javer_influx_db:
+    url: '%env(INFLUXDB_URL)%'
+    mapping_dir: '%kernel.project_dir%/src/Measurement'
+    mapping_type: attribute
