@@ -4,44 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Herbal Garden Dashboard</title>
-    <link rel="stylesheet" href="/css/style.css"> <!-- Link to CSS file -->
-    <script>
-        async function fetchSensorData() {
-            try {
-                const response = await fetch('/influxdb/latest');
-                const data = await response.json();
 
-                console.log("Fetched Data:", data); // Debugging
+    <!-- Include Chart.js and Date Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
-                // Extract data
-                const temperature = data.find(d => d.measurement === "temperature")?.value || "--";
-                const humidity = data.find(d => d.measurement === "humidity")?.value || "--";
-                const pressure = data.find(d => d.measurement === "pressure")?.value || "--";
-                const luminance = data.find(d => d.measurement === "luminance")?.value || "--";
+    <!-- Link to CSS file -->
+    <link rel="stylesheet" href="/css/style.css"> 
 
-                const potA = data.find(d => d.measurement === "moisture_a")?.value || "--";
-                const potB = data.find(d => d.measurement === "moisture_b")?.value || "--";
-                const potC = data.find(d => d.measurement === "moisture_c")?.value || "--";
-
-                // Update UI
-                document.getElementById("temperature").innerText = `${temperature}°C`;
-                document.getElementById("humidity").innerText = `${humidity}%`;
-                document.getElementById("pressure").innerText = `${pressure} hPa`;
-                document.getElementById("luminance").innerText = `${luminance} lux`;
-
-                document.getElementById("potA").innerText = `${potA}%`;
-                document.getElementById("potB").innerText = `${potB}%`;
-                document.getElementById("potC").innerText = `${potC}%`;
-
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            }
+    <!-- Add inline CSS to fix chart disappearing issue -->
+    <style>
+        canvas {
+            max-height: 300px; /* Ensure charts stay visible */
+            width: 100%;
         }
-
-        setInterval(fetchSensorData, 10000);
-        window.onload = fetchSensorData;
-    </script>
+    </style>
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -49,6 +28,7 @@
             <p id="date"></p>
         </header>
 
+        <!-- Environmental Data Section -->
         <section class="weather">
             <h2>🌤 Environmental Conditions</h2>
             <div class="weather-grid">
@@ -71,6 +51,7 @@
             </div>
         </section>
 
+        <!-- Soil Moisture Section -->
         <section class="moisture">
             <h2>🌱 Soil Moisture</h2>
             <div class="moisture-grid">
@@ -88,10 +69,129 @@
                 </div>
             </div>
         </section>
+
+        <!-- 📊 CHARTS Section -->
+        <section class="charts">
+            <h2>📊 Environmental Data Trends</h2>
+            <canvas id="temperatureChart"></canvas>
+            <canvas id="humidityChart"></canvas>
+            <canvas id="pressureChart"></canvas>
+            <canvas id="luminanceChart"></canvas>
+        </section>
+
+        <section class="charts">
+            <h2>🌱 Soil Moisture Trends</h2>
+            <canvas id="moistureChart"></canvas>
+        </section>
     </div>
 
+    <!-- JavaScript for Charts -->
     <script>
         document.getElementById("date").innerText = new Date().toDateString();
+
+        let temperatureChart, humidityChart, pressureChart, luminanceChart, moistureChart;
+
+        async function fetchHistoricalData() {
+    try {
+        const response = await fetch('/influxdb/history');
+        const data = await response.json();
+
+        console.log("Fetched Historical Data:", data); // Debugging
+
+        if (!Array.isArray(data) || data.length === 0) {
+            console.error("❌ No historical data received!");
+            return;
+        }
+
+        // Extract timestamps & convert to JavaScript Date objects
+        const timestamps = data.map(d => new Date(d.time));
+
+        // Extract datasets
+        const temperatures = data.filter(d => d.measurement === "temperature").map(d => d.value);
+        const humidities = data.filter(d => d.measurement === "humidity").map(d => d.value);
+        const pressures = data.filter(d => d.measurement === "pressure").map(d => d.value);
+        const luminances = data.filter(d => d.measurement === "luminance").map(d => d.value);
+        const moistures = data.filter(d => d.measurement.includes("moisture")).map(d => d.value);
+
+        console.log("✅ Parsed Timestamps:", timestamps);
+
+        updateChart(temperatureChart, timestamps, temperatures);
+        updateChart(humidityChart, timestamps, humidities);
+        updateChart(pressureChart, timestamps, pressures);
+        updateChart(luminanceChart, timestamps, luminances);
+        updateChart(moistureChart, timestamps, moistures);
+
+    } catch (error) {
+        console.error("❌ Error fetching historical data:", error);
+    }
+}
+
+
+        function createChart(canvasId, label, color) {
+    const ctx = document.getElementById(canvasId).getContext("2d");
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: color,
+                backgroundColor: color + '30',
+                fill: true,
+                tension: 0.3 // Smooth lines
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time', // ✅ Use time-based x-axis
+                    time: {
+                        unit: 'day', // ✅ Show data points per day
+                        tooltipFormat: 'MMM dd' // Format tooltips (e.g., "Mar 06")
+                    },
+                    adapters: {
+                        date: Chart._adapters.date
+                    },
+                    title: { display: true, text: "Date" }
+                },
+                y: {
+                    title: { display: true, text: label }
+                }
+            }
+        }
+    });
+}
+
+
+        function updateChart(chart, labels, data) {
+        if (!chart) {
+        console.error("Chart not initialized for", labels);
+        return;
+        }
+
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = data;
+        chart.update(); // ✅ Only update instead of reloading the whole chart
+        }
+
+
+        window.onload = function () {
+    if (!temperatureChart) {
+        temperatureChart = createChart("temperatureChart", "Temperature (°C)", "red");
+        humidityChart = createChart("humidityChart", "Humidity (%)", "blue");
+        pressureChart = createChart("pressureChart", "Pressure (hPa)", "green");
+        luminanceChart = createChart("luminanceChart", "Luminance (lux)", "orange");
+        moistureChart = createChart("moistureChart", "Soil Moisture (%)", "purple");
+    }
+
+    fetchHistoricalData();
+    setInterval(fetchHistoricalData, 60000); // ✅ Keep updating every 60 seconds
+};
+
     </script>
+
 </body>
 </html>

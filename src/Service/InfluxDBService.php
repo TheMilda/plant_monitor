@@ -93,6 +93,51 @@ private function parseInfluxDBCsv(string $csvData): array
     return $data;
 }
 
+private function fetchInfluxDBData(string $query): array
+{
+    $url = "{$this->influxdbUrl}/api/v2/query?org=" . urlencode($this->influxdbOrg);
+
+    $response = $this->client->post($url, [
+        'headers' => [
+            'Authorization' => "Token {$this->influxdbToken}",
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/csv',
+        ],
+        'json' => [
+            'query' => $query,
+            'dialect' => [
+                'header' => true,
+                'delimiter' => ',',
+                'annotations' => ['datatype'],
+            ],
+        ],
+    ]);
+
+    $csvData = $response->getBody()->getContents();
+    file_put_contents(__DIR__ . "/debug_history.csv", $csvData); // Debug CSV response
+
+    return $this->parseInfluxDBCsv($csvData);
+}
+
+public function getHistoricalData(): array
+{
+    $query = <<<EOT
+        from(bucket: "{$this->influxdbBucket}")
+            |> range(start: -30d) // Fetch last 30 days of data
+            |> filter(fn: (r) => r["_measurement"] == "temperature" or 
+                                 r["_measurement"] == "humidity" or 
+                                 r["_measurement"] == "pressure" or 
+                                 r["_measurement"] == "luminance" or 
+                                 r["_measurement"] == "moisture_a" or 
+                                 r["_measurement"] == "moisture_b" or 
+                                 r["_measurement"] == "moisture_c")
+            |> aggregateWindow(every: 1d, fn: mean, createEmpty: false) // Daily average
+            |> sort(columns: ["_time"], desc: false)
+    EOT;
+
+    return $this->fetchInfluxDBData($query);
+}
+
 
     private function formatInfluxDBData(array $data): array
     {

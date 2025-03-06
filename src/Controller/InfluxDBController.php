@@ -19,4 +19,16 @@ class InfluxDBController extends AbstractController
             return $this->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    #[Route('/influxdb/history', name: 'get_historical_data', methods: ['GET'])]
+    public function getHistoricalData(InfluxDBService $influxDBService): JsonResponse
+    {
+        try {
+            $data = $influxDBService->getHistoricalData();
+            return $this->json($data);
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }
+
