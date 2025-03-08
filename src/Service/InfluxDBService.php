@@ -123,7 +123,7 @@ public function getHistoricalData(): array
 {
     $query = <<<EOT
         from(bucket: "{$this->influxdbBucket}")
-            |> range(start: -30d) // Fetch last 30 days of data
+            |> range(start: -30d) // Get last 30 days
             |> filter(fn: (r) => r["_measurement"] == "temperature" or 
                                  r["_measurement"] == "humidity" or 
                                  r["_measurement"] == "pressure" or 
@@ -131,12 +131,13 @@ public function getHistoricalData(): array
                                  r["_measurement"] == "moisture_a" or 
                                  r["_measurement"] == "moisture_b" or 
                                  r["_measurement"] == "moisture_c")
-            |> aggregateWindow(every: 1d, fn: mean, createEmpty: false) // Daily average
+            |> aggregateWindow(every: 1d, fn: mean, createEmpty: false) // ✅ Group by day
             |> sort(columns: ["_time"], desc: false)
     EOT;
 
     return $this->fetchInfluxDBData($query);
 }
+
 
 
     private function formatInfluxDBData(array $data): array

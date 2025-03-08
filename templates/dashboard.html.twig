@@ -12,7 +12,6 @@
     <!-- Link to CSS file -->
     <link rel="stylesheet" href="/css/style.css"> 
 
-    <!-- Add inline CSS to fix chart disappearing issue -->
     <style>
         canvas {
             max-height: 300px; /* Ensure charts stay visible */
@@ -32,22 +31,10 @@
         <section class="weather">
             <h2>🌤 Environmental Conditions</h2>
             <div class="weather-grid">
-                <div class="card">
-                    <p>🌡 Temperature</p>
-                    <span id="temperature">--°C</span>
-                </div>
-                <div class="card">
-                    <p>💧 Humidity</p>
-                    <span id="humidity">--%</span>
-                </div>
-                <div class="card">
-                    <p>🌍 Pressure</p>
-                    <span id="pressure">-- hPa</span>
-                </div>
-                <div class="card">
-                    <p>💡 Luminance</p>
-                    <span id="luminance">-- lux</span>
-                </div>
+                <div class="card"><p>🌡 Temperature</p><span id="temperature">--°C</span></div>
+                <div class="card"><p>💧 Humidity</p><span id="humidity">--%</span></div>
+                <div class="card"><p>🌍 Pressure</p><span id="pressure">-- hPa</span></div>
+                <div class="card"><p>💡 Luminance</p><span id="luminance">-- lux</span></div>
             </div>
         </section>
 
@@ -55,22 +42,13 @@
         <section class="moisture">
             <h2>🌱 Soil Moisture</h2>
             <div class="moisture-grid">
-                <div class="pot-card">
-                    <p>Pot A 🌊</p>
-                    <span id="potA">--%</span>
-                </div>
-                <div class="pot-card">
-                    <p>Pot B 🌊</p>
-                    <span id="potB">--%</span>
-                </div>
-                <div class="pot-card">
-                    <p>Pot C 🌊</p>
-                    <span id="potC">--%</span>
-                </div>
+                <div class="pot-card"><p>Pot A 🌊</p><span id="potA">--%</span></div>
+                <div class="pot-card"><p>Pot B 🌊</p><span id="potB">--%</span></div>
+                <div class="pot-card"><p>Pot C 🌊</p><span id="potC">--%</span></div>
             </div>
         </section>
 
-        <!-- 📊 CHARTS Section -->
+        <!-- 📊 Charts Section -->
         <section class="charts">
             <h2>📊 Environmental Data Trends</h2>
             <canvas id="temperatureChart"></canvas>
@@ -85,113 +63,136 @@
         </section>
     </div>
 
-    <!-- JavaScript for Charts -->
     <script>
         document.getElementById("date").innerText = new Date().toDateString();
 
         let temperatureChart, humidityChart, pressureChart, luminanceChart, moistureChart;
 
-        async function fetchHistoricalData() {
-    try {
-        const response = await fetch('/influxdb/history');
-        const data = await response.json();
+        // ✅ Function to update dashboard values
+        function updateDashboardValues(latestData) {
+            console.log("✅ Updating Dashboard Values:", latestData);
 
-        console.log("Fetched Historical Data:", data); // Debugging
+            document.getElementById("temperature").innerText = latestData.temperature ? latestData.temperature.y.toFixed(1) + "°C" : "--";
+            document.getElementById("humidity").innerText = latestData.humidity ? latestData.humidity.y.toFixed(1) + "%" : "--";
+            document.getElementById("pressure").innerText = latestData.pressure ? latestData.pressure.y.toFixed(1) + " hPa" : "--";
+            document.getElementById("luminance").innerText = latestData.luminance ? latestData.luminance.y.toFixed(1) + " lux" : "--";
 
-        if (!Array.isArray(data) || data.length === 0) {
-            console.error("❌ No historical data received!");
-            return;
+            document.getElementById("potA").innerText = latestData.moisture_a ? latestData.moisture_a.y.toFixed(1) + "%" : "--";
+            document.getElementById("potB").innerText = latestData.moisture_b ? latestData.moisture_b.y.toFixed(1) + "%" : "--";
+            document.getElementById("potC").innerText = latestData.moisture_c ? latestData.moisture_c.y.toFixed(1) + "%" : "--";
         }
 
-        // Extract timestamps & convert to JavaScript Date objects
-        const timestamps = data.map(d => new Date(d.time));
-
-        // Extract datasets
-        const temperatures = data.filter(d => d.measurement === "temperature").map(d => d.value);
-        const humidities = data.filter(d => d.measurement === "humidity").map(d => d.value);
-        const pressures = data.filter(d => d.measurement === "pressure").map(d => d.value);
-        const luminances = data.filter(d => d.measurement === "luminance").map(d => d.value);
-        const moistures = data.filter(d => d.measurement.includes("moisture")).map(d => d.value);
-
-        console.log("✅ Parsed Timestamps:", timestamps);
-
-        updateChart(temperatureChart, timestamps, temperatures);
-        updateChart(humidityChart, timestamps, humidities);
-        updateChart(pressureChart, timestamps, pressures);
-        updateChart(luminanceChart, timestamps, luminances);
-        updateChart(moistureChart, timestamps, moistures);
-
-    } catch (error) {
-        console.error("❌ Error fetching historical data:", error);
-    }
-}
-
-
+        // ✅ Function to create charts
         function createChart(canvasId, label, color) {
-    const ctx = document.getElementById(canvasId).getContext("2d");
-    return new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: label,
-                data: [],
-                borderColor: color,
-                backgroundColor: color + '30',
-                fill: true,
-                tension: 0.3 // Smooth lines
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    type: 'time', // ✅ Use time-based x-axis
-                    time: {
-                        unit: 'day', // ✅ Show data points per day
-                        tooltipFormat: 'MMM dd' // Format tooltips (e.g., "Mar 06")
+            const ctx = document.getElementById(canvasId).getContext("2d");
+            return new Chart(ctx, {
+                type: 'line',
+                data: { datasets: [] }, 
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'day', tooltipFormat: 'MMM dd' },
+                            title: { display: true, text: "Date" }
+                        },
+                        y: {
+                            title: { display: true, text: label }
+                        }
                     },
-                    adapters: {
-                        date: Chart._adapters.date
-                    },
-                    title: { display: true, text: "Date" }
-                },
-                y: {
-                    title: { display: true, text: label }
+                    plugins: {
+                        legend: { display: true, position: "top" }
+                    }
                 }
+            });
+        }
+
+        // ✅ Function to update charts
+        function updateChart(chart, data) {
+            if (!chart) return console.error("❌ Chart not initialized");
+            if (chart.data.datasets.length === 0) {
+                chart.data.datasets.push({
+                    label: chart.options.scales.y.title.text,
+                    data: [],
+                    borderColor: "black",
+                    backgroundColor: "rgba(132, 27, 151, 0.3)",
+                    fill: false,
+                    tension: 0.3
+                });
+            }
+            chart.data.datasets[0].data = data;
+            chart.update();
+        }
+
+        // ✅ Function to update moisture chart
+        function updateMoistureChart(chart, dataA, dataB, dataC) {
+            if (!chart) return console.error("❌ Moisture Chart not initialized!");
+            chart.data.datasets = [
+                { label: "Pot A", data: dataA, borderColor: "blue", fill: false, tension: 0.3 },
+                { label: "Pot B", data: dataB, borderColor: "green", fill: false, tension: 0.3 },
+                { label: "Pot C", data: dataC, borderColor: "red", fill: false, tension: 0.3 }
+            ];
+            chart.update();
+        }
+
+        // ✅ Function to fetch and update data
+        async function fetchHistoricalData() {
+            try {
+                const response = await fetch('/influxdb/history');
+                const data = await response.json();
+                console.log("📊 Fetched Historical Data:", data);
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    console.error("❌ No historical data received!");
+                    return;
+                }
+
+                function extractSortedData(measurementName) {
+                    return data.filter(d => d.measurement === measurementName)
+                               .map(d => ({ x: new Date(d.time), y: d.value }))
+                               .sort((a, b) => a.x - b.x);
+                }
+
+                const temperatureData = extractSortedData("temperature");
+                const humidityData = extractSortedData("humidity");
+                const pressureData = extractSortedData("pressure");
+                const luminanceData = extractSortedData("luminance");
+
+                const moistureDataA = extractSortedData("moisture_a");
+                const moistureDataB = extractSortedData("moisture_b");
+                const moistureDataC = extractSortedData("moisture_c");
+
+                console.log("✅ Debug: Moisture Data", { moistureDataA, moistureDataB, moistureDataC });
+
+                updateChart(temperatureChart, temperatureData);
+                updateChart(humidityChart, humidityData);
+                updateChart(pressureChart, pressureData);
+                updateChart(luminanceChart, luminanceData);
+                updateMoistureChart(moistureChart, moistureDataA, moistureDataB, moistureDataC);
+
+                updateDashboardValues({
+                    temperature: temperatureData.at(-1), humidity: humidityData.at(-1),
+                    pressure: pressureData.at(-1), luminance: luminanceData.at(-1),
+                    moisture_a: moistureDataA.at(-1), moisture_b: moistureDataB.at(-1), moisture_c: moistureDataC.at(-1)
+                });
+
+            } catch (error) {
+                console.error("❌ Error fetching historical data:", error);
             }
         }
-    });
-}
-
-
-        function updateChart(chart, labels, data) {
-        if (!chart) {
-        console.error("Chart not initialized for", labels);
-        return;
-        }
-
-        chart.data.labels = labels;
-        chart.data.datasets[0].data = data;
-        chart.update(); // ✅ Only update instead of reloading the whole chart
-        }
-
 
         window.onload = function () {
-    if (!temperatureChart) {
-        temperatureChart = createChart("temperatureChart", "Temperature (°C)", "red");
-        humidityChart = createChart("humidityChart", "Humidity (%)", "blue");
-        pressureChart = createChart("pressureChart", "Pressure (hPa)", "green");
-        luminanceChart = createChart("luminanceChart", "Luminance (lux)", "orange");
-        moistureChart = createChart("moistureChart", "Soil Moisture (%)", "purple");
-    }
+            temperatureChart = createChart("temperatureChart", "Temperature (°C)", "red");
+            humidityChart = createChart("humidityChart", "Humidity (%)", "blue");
+            pressureChart = createChart("pressureChart", "Pressure (hPa)", "green");
+            luminanceChart = createChart("luminanceChart", "Luminance (lux)", "orange");
+            moistureChart = createChart("moistureChart", "Soil Moisture (%)", "purple");
 
-    fetchHistoricalData();
-    setInterval(fetchHistoricalData, 60000); // ✅ Keep updating every 60 seconds
-};
+            fetchHistoricalData();
+            setInterval(fetchHistoricalData, 60000);
+        };
 
     </script>
-
 </body>
 </html>
