@@ -1,4 +1,0 @@
-#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string
-,result,table,_start,_stop,_time,_value,_field,_measurement,device
-,_result,0,2025-03-06T15:57:08.017725848Z,2025-03-06T16:57:08.017725848Z,2025-03-06T16:51:32Z,25.5,value,temperature,test-sensor
-
