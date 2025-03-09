@@ -1,0 +1,116 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Pot {{ pot }} - Moisture Chart{% endblock %}
+
+{% block body %}
+<div class="container">
+    <h1>🌿 Moisture Trends - Pot {{ pot }}</h1>
+    <div class="chart-container">
+        <canvas id="moistureChart"></canvas>
+    </div>
+    <a href="{{ path('dashboard') }}" class="back-btn">⬅ Back to Dashboard</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
+<script>
+    async function fetchMoistureData() {
+        try {
+            const response = await fetch('/influxdb/history');
+            const data = await response.json();
+
+            const filteredData = data.filter(d => d.measurement === "{{ measurement }}")
+                                     .map(d => ({ x: new Date(d.time), y: d.value }))
+                                     .sort((a, b) => a.x - b.x);
+
+            updateMoistureChart(filteredData);
+        } catch (error) {
+            console.error("❌ Error fetching moisture data:", error);
+        }
+    }
+
+    function updateMoistureChart(data) {
+        const ctx = document.getElementById("moistureChart").getContext("2d");
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: "Soil Moisture (%)",
+                    data: data,
+                    borderColor: "#2E7D32", // Deep green
+                    backgroundColor: "rgba(46, 125, 50, 0.2)", // Soft green fill
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: { unit: 'hour', tooltipFormat: 'MMM dd HH:mm' },
+                        title: { display: true, text: "Date & Time" }
+                    },
+                    y: {
+                        title: { display: true, text: "Moisture Level (%)" }
+                    }
+                },
+                plugins: {
+                    legend: { display: true, position: "top" }
+                }
+            }
+        });
+    }
+
+    fetchMoistureData();
+</script>
+
+<style>
+    body {
+        background-color: #E8F5E9; /* Soft green background */
+        font-family: 'Arial', sans-serif;
+    }
+    
+    .container {
+        text-align: center;
+        padding: 20px;
+    }
+
+    h1 {
+        color: #1B5E20; /* Dark green */
+        font-weight: bold;
+    }
+
+    .chart-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin: auto;
+        max-width: 90%;
+        min-height: 450px; /* Ensure the chart has enough space */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .back-btn {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 12px 25px;
+        background-color: #4CAF50; /* Green */
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: 0.3s ease;
+    }
+
+    .back-btn:hover {
+        background-color: #388E3C; /* Darker green */
+    }
+
+</style>
+{% endblock %}

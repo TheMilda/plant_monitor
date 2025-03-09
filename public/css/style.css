@@ -8,6 +8,11 @@ body {
     text-align: center;
 }
 
+canvas {
+    max-height: 400px !important; /* Set max height */
+    width: 100% !important; /* Responsive width */
+}
+
 /* Container */
 .container {
     max-width: 800px;

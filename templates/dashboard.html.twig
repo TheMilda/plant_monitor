@@ -14,8 +14,22 @@
 
     <style>
         canvas {
-            max-height: 300px; /* Ensure charts stay visible */
+            max-height: 300px;
             width: 100%;
+        }
+
+        /* Make pot cards clickable */
+        .pot-card {
+            cursor: pointer;
+            text-align: center;
+            padding: 15px;
+            background-color: #e0f7fa;
+            border-radius: 8px;
+            transition: 0.3s;
+        }
+
+        .pot-card:hover {
+            background-color: #b2ebf2;
         }
     </style>
 </head>
@@ -42,9 +56,15 @@
         <section class="moisture">
             <h2>🌱 Soil Moisture</h2>
             <div class="moisture-grid">
-                <div class="pot-card"><p>Pot A 🌊</p><span id="potA">--%</span></div>
-                <div class="pot-card"><p>Pot B 🌊</p><span id="potB">--%</span></div>
-                <div class="pot-card"><p>Pot C 🌊</p><span id="potC">--%</span></div>
+                <a href="{{ path('chart', {'pot': 'A'}) }}" class="pot-card">
+                    <p>Pot A 🌊</p><span id="potA">--%</span>
+                </a>
+                <a href="{{ path('chart', {'pot': 'B'}) }}" class="pot-card">
+                    <p>Pot B 🌊</p><span id="potB">--%</span>
+                </a>
+                <a href="{{ path('chart', {'pot': 'C'}) }}" class="pot-card">
+                    <p>Pot C 🌊</p><span id="potC">--%</span>
+                </a>
             </div>
         </section>
 
@@ -56,22 +76,14 @@
             <canvas id="pressureChart"></canvas>
             <canvas id="luminanceChart"></canvas>
         </section>
-
-        <section class="charts">
-            <h2>🌱 Soil Moisture Trends</h2>
-            <canvas id="moistureChart"></canvas>
-        </section>
     </div>
 
     <script>
         document.getElementById("date").innerText = new Date().toDateString();
 
-        let temperatureChart, humidityChart, pressureChart, luminanceChart, moistureChart;
+        let temperatureChart, humidityChart, pressureChart, luminanceChart;
 
-        // ✅ Function to update dashboard values
         function updateDashboardValues(latestData) {
-            console.log("✅ Updating Dashboard Values:", latestData);
-
             document.getElementById("temperature").innerText = latestData.temperature ? latestData.temperature.y.toFixed(1) + "°C" : "--";
             document.getElementById("humidity").innerText = latestData.humidity ? latestData.humidity.y.toFixed(1) + "%" : "--";
             document.getElementById("pressure").innerText = latestData.pressure ? latestData.pressure.y.toFixed(1) + " hPa" : "--";
@@ -82,7 +94,6 @@
             document.getElementById("potC").innerText = latestData.moisture_c ? latestData.moisture_c.y.toFixed(1) + "%" : "--";
         }
 
-        // ✅ Function to create charts
         function createChart(canvasId, label, color) {
             const ctx = document.getElementById(canvasId).getContext("2d");
             return new Chart(ctx, {
@@ -108,9 +119,8 @@
             });
         }
 
-        // ✅ Function to update charts
         function updateChart(chart, data) {
-            if (!chart) return console.error("❌ Chart not initialized");
+            if (!chart) return;
             if (chart.data.datasets.length === 0) {
                 chart.data.datasets.push({
                     label: chart.options.scales.y.title.text,
@@ -125,28 +135,10 @@
             chart.update();
         }
 
-        // ✅ Function to update moisture chart
-        function updateMoistureChart(chart, dataA, dataB, dataC) {
-            if (!chart) return console.error("❌ Moisture Chart not initialized!");
-            chart.data.datasets = [
-                { label: "Pot A", data: dataA, borderColor: "blue", fill: false, tension: 0.3 },
-                { label: "Pot B", data: dataB, borderColor: "green", fill: false, tension: 0.3 },
-                { label: "Pot C", data: dataC, borderColor: "red", fill: false, tension: 0.3 }
-            ];
-            chart.update();
-        }
-
-        // ✅ Function to fetch and update data
         async function fetchHistoricalData() {
             try {
                 const response = await fetch('/influxdb/history');
                 const data = await response.json();
-                console.log("📊 Fetched Historical Data:", data);
-
-                if (!Array.isArray(data) || data.length === 0) {
-                    console.error("❌ No historical data received!");
-                    return;
-                }
 
                 function extractSortedData(measurementName) {
                     return data.filter(d => d.measurement === measurementName)
@@ -154,27 +146,19 @@
                                .sort((a, b) => a.x - b.x);
                 }
 
-                const temperatureData = extractSortedData("temperature");
-                const humidityData = extractSortedData("humidity");
-                const pressureData = extractSortedData("pressure");
-                const luminanceData = extractSortedData("luminance");
-
-                const moistureDataA = extractSortedData("moisture_a");
-                const moistureDataB = extractSortedData("moisture_b");
-                const moistureDataC = extractSortedData("moisture_c");
-
-                console.log("✅ Debug: Moisture Data", { moistureDataA, moistureDataB, moistureDataC });
-
-                updateChart(temperatureChart, temperatureData);
-                updateChart(humidityChart, humidityData);
-                updateChart(pressureChart, pressureData);
-                updateChart(luminanceChart, luminanceData);
-                updateMoistureChart(moistureChart, moistureDataA, moistureDataB, moistureDataC);
+                updateChart(temperatureChart, extractSortedData("temperature"));
+                updateChart(humidityChart, extractSortedData("humidity"));
+                updateChart(pressureChart, extractSortedData("pressure"));
+                updateChart(luminanceChart, extractSortedData("luminance"));
 
                 updateDashboardValues({
-                    temperature: temperatureData.at(-1), humidity: humidityData.at(-1),
-                    pressure: pressureData.at(-1), luminance: luminanceData.at(-1),
-                    moisture_a: moistureDataA.at(-1), moisture_b: moistureDataB.at(-1), moisture_c: moistureDataC.at(-1)
+                    temperature: extractSortedData("temperature").at(-1),
+                    humidity: extractSortedData("humidity").at(-1),
+                    pressure: extractSortedData("pressure").at(-1),
+                    luminance: extractSortedData("luminance").at(-1),
+                    moisture_a: extractSortedData("moisture_a").at(-1),
+                    moisture_b: extractSortedData("moisture_b").at(-1),
+                    moisture_c: extractSortedData("moisture_c").at(-1)
                 });
 
             } catch (error) {
@@ -187,12 +171,10 @@
             humidityChart = createChart("humidityChart", "Humidity (%)", "blue");
             pressureChart = createChart("pressureChart", "Pressure (hPa)", "green");
             luminanceChart = createChart("luminanceChart", "Luminance (lux)", "orange");
-            moistureChart = createChart("moistureChart", "Soil Moisture (%)", "purple");
 
             fetchHistoricalData();
             setInterval(fetchHistoricalData, 60000);
         };
-
     </script>
 </body>
 </html>
