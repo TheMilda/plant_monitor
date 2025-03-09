@@ -1,180 +1,259 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Herbal Garden Dashboard</title>
+{% extends 'base.html.twig' %}
 
-    <!-- Include Chart.js and Date Adapter -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+{% block title %}Dashboard{% endblock %}
 
-    <!-- Link to CSS file -->
-    <link rel="stylesheet" href="/css/style.css"> 
+{% block body %}
 
-    <style>
-        canvas {
-            max-height: 300px;
-            width: 100%;
-        }
+<div class="container">
+    <header class="dashboard-header">
+        <h1>🌿 Welcome Back, Milena!</h1>
+        <p>{{ "now"|date("D M d Y") }}</p>
+    </header>
 
-        /* Make pot cards clickable */
-        .pot-card {
-            cursor: pointer;
-            text-align: center;
-            padding: 15px;
-            background-color: #e0f7fa;
-            border-radius: 8px;
-            transition: 0.3s;
-        }
+    <!-- Environmental Data Section -->
+    <section class="weather">
+        <h2>🌤 Environmental Conditions</h2>
+        <div class="weather-grid">
+            <div class="card"><p>🌡 Temperature</p><span id="temperature">--°C</span></div>
+            <div class="card"><p>💧 Humidity</p><span id="humidity">--%</span></div>
+            <div class="card"><p>🌍 Pressure</p><span id="pressure">-- hPa</span></div>
+            <div class="card"><p>💡 Luminance</p><span id="luminance">-- lux</span></div>
+        </div>
+    </section>
 
-        .pot-card:hover {
-            background-color: #b2ebf2;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <header>
-            <h1>🌿 Welcome Back, Milena!</h1>
-            <p id="date"></p>
-        </header>
-
-        <!-- Environmental Data Section -->
-        <section class="weather">
-            <h2>🌤 Environmental Conditions</h2>
-            <div class="weather-grid">
-                <div class="card"><p>🌡 Temperature</p><span id="temperature">--°C</span></div>
-                <div class="card"><p>💧 Humidity</p><span id="humidity">--%</span></div>
-                <div class="card"><p>🌍 Pressure</p><span id="pressure">-- hPa</span></div>
-                <div class="card"><p>💡 Luminance</p><span id="luminance">-- lux</span></div>
+    <!-- Soil Moisture Section -->
+    <section class="moisture">
+        <h2>🌱 Soil Moisture</h2>
+        <div class="moisture-grid">
+            <div class="pot-card">
+                <a href="{{ path('chart', {'pot': 'A'}) }}">Pot A 🌊</a>
+                <p><span id="potA">--%</span></p>
             </div>
-        </section>
-
-        <!-- Soil Moisture Section -->
-        <section class="moisture">
-            <h2>🌱 Soil Moisture</h2>
-            <div class="moisture-grid">
-                <a href="{{ path('chart', {'pot': 'A'}) }}" class="pot-card">
-                    <p>Pot A 🌊</p><span id="potA">--%</span>
-                </a>
-                <a href="{{ path('chart', {'pot': 'B'}) }}" class="pot-card">
-                    <p>Pot B 🌊</p><span id="potB">--%</span>
-                </a>
-                <a href="{{ path('chart', {'pot': 'C'}) }}" class="pot-card">
-                    <p>Pot C 🌊</p><span id="potC">--%</span>
-                </a>
+            <div class="pot-card">
+                <a href="{{ path('chart', {'pot': 'B'}) }}">Pot B 🌊</a>
+                <p><span id="potB">--%</span></p>
             </div>
-        </section>
+            <div class="pot-card">
+                <a href="{{ path('chart', {'pot': 'C'}) }}">Pot C 🌊</a>
+                <p><span id="potC">--%</span></p>
+            </div>
+        </div>
+    </section>
 
-        <!-- 📊 Charts Section -->
-        <section class="charts">
-            <h2>📊 Environmental Data Trends</h2>
-            <canvas id="temperatureChart"></canvas>
-            <canvas id="humidityChart"></canvas>
-            <canvas id="pressureChart"></canvas>
-            <canvas id="luminanceChart"></canvas>
-        </section>
-    </div>
+    <!-- Charts Section -->
+    <section class="charts">
+        <h2>📊 Environmental Data Trends</h2>
+        <div class="chart-container"><canvas id="temperatureChart"></canvas></div>
+        <div class="chart-container"><canvas id="humidityChart"></canvas></div>
+        <div class="chart-container"><canvas id="pressureChart"></canvas></div>
+        <div class="chart-container"><canvas id="luminanceChart"></canvas></div>
+    </section>
+</div>
 
-    <script>
-        document.getElementById("date").innerText = new Date().toDateString();
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
-        let temperatureChart, humidityChart, pressureChart, luminanceChart;
+<script>
+    let temperatureChart, humidityChart, pressureChart, luminanceChart;
 
-        function updateDashboardValues(latestData) {
-            document.getElementById("temperature").innerText = latestData.temperature ? latestData.temperature.y.toFixed(1) + "°C" : "--";
-            document.getElementById("humidity").innerText = latestData.humidity ? latestData.humidity.y.toFixed(1) + "%" : "--";
-            document.getElementById("pressure").innerText = latestData.pressure ? latestData.pressure.y.toFixed(1) + " hPa" : "--";
-            document.getElementById("luminance").innerText = latestData.luminance ? latestData.luminance.y.toFixed(1) + " lux" : "--";
-
-            document.getElementById("potA").innerText = latestData.moisture_a ? latestData.moisture_a.y.toFixed(1) + "%" : "--";
-            document.getElementById("potB").innerText = latestData.moisture_b ? latestData.moisture_b.y.toFixed(1) + "%" : "--";
-            document.getElementById("potC").innerText = latestData.moisture_c ? latestData.moisture_c.y.toFixed(1) + "%" : "--";
+    function createChart(canvasId, label, color) {
+        const ctx = document.getElementById(canvasId)?.getContext("2d");
+        if (!ctx) {
+            console.error(`❌ Canvas element '${canvasId}' not found!`);
+            return null;
         }
 
-        function createChart(canvasId, label, color) {
-            const ctx = document.getElementById(canvasId).getContext("2d");
-            return new Chart(ctx, {
-                type: 'line',
-                data: { datasets: [] }, 
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: { unit: 'day', tooltipFormat: 'MMM dd' },
-                            title: { display: true, text: "Date" }
-                        },
-                        y: {
-                            title: { display: true, text: label }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: true, position: "top" }
-                    }
-                }
-            });
-        }
-
-        function updateChart(chart, data) {
-            if (!chart) return;
-            if (chart.data.datasets.length === 0) {
-                chart.data.datasets.push({
-                    label: chart.options.scales.y.title.text,
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: label,
                     data: [],
-                    borderColor: "black",
+                    borderColor: color,
                     backgroundColor: "rgba(132, 27, 151, 0.3)",
-                    fill: false,
+                    fill: true,
                     tension: 0.3
-                });
-            }
-            chart.data.datasets[0].data = data;
-            chart.update();
-        }
-
-        async function fetchHistoricalData() {
-            try {
-                const response = await fetch('/influxdb/history');
-                const data = await response.json();
-
-                function extractSortedData(measurementName) {
-                    return data.filter(d => d.measurement === measurementName)
-                               .map(d => ({ x: new Date(d.time), y: d.value }))
-                               .sort((a, b) => a.x - b.x);
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: { unit: 'hour', tooltipFormat: 'MMM dd HH:mm' },
+                        title: { display: true, text: "Time" }
+                    },
+                    y: {
+                        title: { display: true, text: label }
+                    }
+                },
+                plugins: {
+                    legend: { display: true, position: "top" }
                 }
-
-                updateChart(temperatureChart, extractSortedData("temperature"));
-                updateChart(humidityChart, extractSortedData("humidity"));
-                updateChart(pressureChart, extractSortedData("pressure"));
-                updateChart(luminanceChart, extractSortedData("luminance"));
-
-                updateDashboardValues({
-                    temperature: extractSortedData("temperature").at(-1),
-                    humidity: extractSortedData("humidity").at(-1),
-                    pressure: extractSortedData("pressure").at(-1),
-                    luminance: extractSortedData("luminance").at(-1),
-                    moisture_a: extractSortedData("moisture_a").at(-1),
-                    moisture_b: extractSortedData("moisture_b").at(-1),
-                    moisture_c: extractSortedData("moisture_c").at(-1)
-                });
-
-            } catch (error) {
-                console.error("❌ Error fetching historical data:", error);
             }
+        });
+    }
+
+    async function fetchLatestData() {
+        try {
+            const response = await fetch('/influxdb/latest');
+            const data = await response.json();
+            console.log("📊 Latest Data Received:", data);
+
+            if (!Array.isArray(data) || data.length === 0) {
+                console.error("❌ No valid data received!");
+                return;
+            }
+
+            const latestData = {};
+            data.forEach(entry => {
+                latestData[entry.measurement] = entry.value;
+            });
+
+            document.getElementById("temperature").innerText = latestData.temperature ? latestData.temperature.toFixed(1) + "°C" : "--";
+            document.getElementById("humidity").innerText = latestData.humidity ? latestData.humidity.toFixed(1) + "%" : "--";
+            document.getElementById("pressure").innerText = latestData.pressure ? latestData.pressure.toFixed(1) + " hPa" : "--";
+            document.getElementById("luminance").innerText = latestData.luminance ? latestData.luminance.toFixed(1) + " lux" : "--";
+
+            document.getElementById("potA").innerText = latestData.moisture_a ? latestData.moisture_a.toFixed(1) + "%" : "--";
+            document.getElementById("potB").innerText = latestData.moisture_b ? latestData.moisture_b.toFixed(1) + "%" : "--";
+            document.getElementById("potC").innerText = latestData.moisture_c ? latestData.moisture_c.toFixed(1) + "%" : "--";
+        } catch (error) {
+            console.error("❌ Error fetching latest data:", error);
         }
+    }
 
-        window.onload = function () {
-            temperatureChart = createChart("temperatureChart", "Temperature (°C)", "red");
-            humidityChart = createChart("humidityChart", "Humidity (%)", "blue");
-            pressureChart = createChart("pressureChart", "Pressure (hPa)", "green");
-            luminanceChart = createChart("luminanceChart", "Luminance (lux)", "orange");
+    async function fetchHistoricalData() {
+        try {
+            const response = await fetch('/influxdb/history');
+            const data = await response.json();
 
-            fetchHistoricalData();
-            setInterval(fetchHistoricalData, 60000);
-        };
-    </script>
-</body>
-</html>
+            console.log("📊 Historical Data Received:", data);
+            if (!Array.isArray(data) || data.length === 0) {
+                console.error("❌ No historical data received!");
+                return;
+            }
+
+            function extractSortedData(measurement) {
+                return data.filter(d => d.measurement === measurement)
+                           .map(d => ({ x: new Date(d.time), y: d.value }))
+                           .sort((a, b) => a.x - b.x);
+            }
+
+            updateChart(temperatureChart, extractSortedData("temperature"));
+            updateChart(humidityChart, extractSortedData("humidity"));
+            updateChart(pressureChart, extractSortedData("pressure"));
+            updateChart(luminanceChart, extractSortedData("luminance"));
+
+        } catch (error) {
+            console.error("❌ Error fetching historical data:", error);
+        }
+    }
+
+    function updateChart(chart, data) {
+        if (!chart) {
+            console.error("❌ Chart instance not found!");
+            return;
+        }
+        if (!chart.data.datasets.length) {
+            console.error("❌ Chart dataset is missing!");
+            return;
+        }
+        chart.data.datasets[0].data = data;
+        chart.update();
+    }
+
+    window.onload = function () {
+        console.log("✅ Initializing dashboard...");
+        temperatureChart = createChart("temperatureChart", "Temperature (°C)", "red");
+        humidityChart = createChart("humidityChart", "Humidity (%)", "blue");
+        pressureChart = createChart("pressureChart", "Pressure (hPa)", "green");
+        luminanceChart = createChart("luminanceChart", "Luminance (lux)", "orange");
+
+        fetchLatestData();
+        fetchHistoricalData();
+        setInterval(fetchLatestData, 60000);
+        setInterval(fetchHistoricalData, 60000);
+    };
+</script>
+
+<style>
+    body {
+        background-color: #edf7e1;
+        font-family: "Poppins", sans-serif;
+    }
+
+    .container {
+        width: 75%;
+        margin: auto;
+        text-align: center;
+    }
+
+    .dashboard-header {
+    background: #4CAF50;
+    padding: 15px; /* Reduce padding */
+    color: white;
+    font-size: 1.5rem; /* Reduce font size slightly */
+    border-radius: 12px;
+    font-weight: bold;
+    }
+
+    .weather, .moisture, .charts {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px 0;
+        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .weather h2, .moisture h2, .charts h2 {
+        color: #2d6a4f;
+        font-weight: bold;
+        margin-bottom: 15px;
+    }
+
+    .weather-grid, .moisture-grid {
+        display: flex;
+        justify-content: space-around;
+        gap: 20px;
+    }
+
+    .card, .pot-card {
+        background: #eaf4ea;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 3px 3px 12px rgba(0, 0, 0, 0.1);
+        width: 22%;
+        text-align: center;
+        font-weight: bold;
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .pot-card {
+        background: #cce3de;
+    }
+
+    .card:hover, .pot-card:hover {
+        transform: scale(1.05);
+    }
+
+    .charts {
+        padding: 20px;
+    }
+
+    .chart-container {
+        background: #f3fae8;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+    }
+
+    canvas {
+        width: 100% !important;
+        height: 400px !important;
+    }
+</style>
+
+{% endblock %}
