@@ -74,6 +74,7 @@
                 }
                 
                 const data = await response.json();
+                console.log(`📊 Received ${data.length} data points`);
                 
                 // Filter data for this specific pot's moisture
                 const filteredData = data.filter(d => d.measurement === "{{ measurement }}")
@@ -82,6 +83,8 @@
                                             y: d.value
                                         }))
                                         .sort((a, b) => a.x - b.x);
+                
+                console.log(`📊 Filtered ${filteredData.length} data points for pot {{ pot }}`);
                 
                 if (filteredData.length === 0) {
                     console.error("❌ No moisture data available for this pot");
@@ -163,8 +166,9 @@
                     enabled: false
                 },
                 stroke: {
-                    curve: 'smooth',
-                    width: 3
+                    curve: 'straight',
+                    width: 3,
+                    lineCap: 'butt'
                 },
                 colors: ['#1B5E20'],
                 fill: {
@@ -199,15 +203,24 @@
                 xaxis: {
                     type: 'datetime',
                     title: {
-                        text: 'Date & Time'
+                        text: 'Date'
                     },
                     labels: {
                         datetimeUTC: false,
-                        format: 'dd.MM HH:mm'
+                        formatter: function(val) {
+                            const date = new Date(val);
+                            const day = date.getDate();
+                            const month = date.getMonth() + 1;
+                            const year = date.getFullYear();
+                            return `${day}. ${month}. ${year}`;
+                        },
+                        style: {
+                            fontSize: '11px',
+                            fontWeight: 400
+                        }
                     },
-                    tooltip: {
-                        enabled: false
-                    }
+                    tickAmount: 7,
+                    tickPlacement: 'on'
                 },
                 yaxis: {
                     title: {
@@ -227,7 +240,15 @@
                 tooltip: {
                     shared: false,
                     x: {
-                        format: 'dd.MM.yyyy HH:mm'
+                        formatter: function(val) {
+                            const date = new Date(val);
+                            const day = date.getDate();
+                            const month = date.getMonth() + 1;
+                            const year = date.getFullYear();
+                            const hours = String(date.getHours()).padStart(2, '0');
+                            const minutes = String(date.getMinutes()).padStart(2, '0');
+                            return `${day}.${month}.${year} ${hours}:${minutes}`;
+                        }
                     },
                     y: {
                         formatter: function(val) {
@@ -236,7 +257,9 @@
                     },
                     marker: {
                         show: true
-                    }
+                    },
+                    intersect: false,
+                    custom: undefined
                 },
                 grid: {
                     borderColor: '#e7e7e7',

@@ -265,7 +265,7 @@
                 }
                 
                 const data = await response.json();
-                console.log("📊 Historical Data Received:", data);
+                console.log(`📊 Received ${data.length} total data points`);
                 
                 if (!Array.isArray(data) || data.length === 0) {
                     console.error("❌ No historical data received!");
@@ -279,6 +279,12 @@
                     pressure: extractSortedData(data, "pressure"),
                     luminance: extractSortedData(data, "luminance")
                 };
+                
+                // Log the number of data points per measurement
+                console.log(`📊 Temperature: ${processedData.temperature.length} points`);
+                console.log(`📊 Humidity: ${processedData.humidity.length} points`);
+                console.log(`📊 Pressure: ${processedData.pressure.length} points`);
+                console.log(`📊 Luminance: ${processedData.luminance.length} points`);
 
                 // Initialize or update the charts
                 if (!window.chartsInitialized) {
@@ -323,8 +329,9 @@
                     enabled: false
                 },
                 stroke: {
-                    curve: 'smooth',
-                    width: 2
+                    curve: 'straight',
+                    width: 2,
+                    lineCap: 'butt'
                 },
                 colors: ['#FF5252'],
                 fill: {
@@ -341,9 +348,19 @@
                     labels: {
                         datetimeUTC: false,
                         formatter: function(val) {
-                            return new Date(val).toLocaleDateString();
+                            const date = new Date(val);
+                            const day = date.getDate();
+                            const month = date.getMonth() + 1;
+                            const year = date.getFullYear();
+                            return `${day}. ${month}. ${year}`;
+                        },
+                        style: {
+                            fontSize: '11px',
+                            fontWeight: 400
                         }
-                    }
+                    },
+                    tickAmount: 7,
+                    tickPlacement: 'on'
                 },
                 yaxis: {
                     title: {
@@ -359,13 +376,22 @@
                 },
                 tooltip: {
                     x: {
-                        format: 'dd MMM yyyy HH:mm'
+                        formatter: function(val) {
+                            const date = new Date(val);
+                            const day = date.getDate();
+                            const month = date.getMonth() + 1;
+                            const year = date.getFullYear();
+                            const hours = String(date.getHours()).padStart(2, '0');
+                            const minutes = String(date.getMinutes()).padStart(2, '0');
+                            return `${day}.${month}.${year} ${hours}:${minutes}`;
+                        }
                     },
                     y: {
                         formatter: function(val) {
                             return val.toFixed(1) + '°C';
                         }
-                    }
+                    },
+                    intersect: false
                 }
             };
 
@@ -390,8 +416,9 @@
                     enabled: false
                 },
                 stroke: {
-                    curve: 'smooth',
-                    width: 2
+                    curve: 'straight',
+                    width: 2,
+                    lineCap: 'butt'
                 },
                 colors: ['#4D8AF0'],
                 fill: {
@@ -426,13 +453,14 @@
                 },
                 tooltip: {
                     x: {
-                        format: 'dd MMM yyyy HH:mm'
+                        format: 'dd.MM HH:mm'
                     },
                     y: {
                         formatter: function(val) {
                             return val.toFixed(1) + '%';
                         }
-                    }
+                    },
+                    intersect: false
                 }
             };
 
@@ -457,8 +485,9 @@
                     enabled: false
                 },
                 stroke: {
-                    curve: 'smooth',
-                    width: 2
+                    curve: 'straight',
+                    width: 2,
+                    lineCap: 'butt'
                 },
                 colors: ['#43A047'],
                 fill: {
@@ -492,13 +521,14 @@
                 },
                 tooltip: {
                     x: {
-                        format: 'dd MMM yyyy HH:mm'
+                        format: 'dd.MM HH:mm'
                     },
                     y: {
                         formatter: function(val) {
                             return val.toFixed(1) + ' hPa';
                         }
-                    }
+                    },
+                    intersect: false
                 }
             };
 
@@ -523,8 +553,9 @@
                     enabled: false
                 },
                 stroke: {
-                    curve: 'smooth',
-                    width: 2
+                    curve: 'straight',
+                    width: 2,
+                    lineCap: 'butt'
                 },
                 colors: ['#FB8C00'],
                 fill: {
@@ -559,13 +590,14 @@
                 },
                 tooltip: {
                     x: {
-                        format: 'dd MMM yyyy HH:mm'
+                        format: 'dd.MM HH:mm'
                     },
                     y: {
                         formatter: function(val) {
                             return val.toFixed(1) + ' lux';
                         }
-                    }
+                    },
+                    intersect: false
                 }
             };
 
