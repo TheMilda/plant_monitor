@@ -1,103 +1,140 @@
 {% extends 'base.html.twig' %}
-
-{% block title %}Dashboard{% endblock %}
-
+{% block title %}Plant Monitor Dashboard{% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/style.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+{% endblock %}
 {% block body %}
-
 <div class="container">
     <header class="dashboard-header">
-        <h1>🌿 Welcome Back, Milena!</h1>
-        <p>{{ "now"|date("D M d Y") }}</p>
+        <h1>🌿 Plant Monitor Dashboard</h1>
+        <p>{{ "now"|date("D, M d Y") }}</p>
     </header>
-
-    <!-- Environmental Data Section -->
-    <section class="weather">
-        <h2>🌤 Environmental Conditions</h2>
-        <div class="weather-grid">
-            <div class="card"><p>🌡 Temperature</p><span id="temperature">--°C</span></div>
-            <div class="card"><p>💧 Humidity</p><span id="humidity">--%</span></div>
-            <div class="card"><p>🌍 Pressure</p><span id="pressure">-- hPa</span></div>
-            <div class="card"><p>💡 Luminance</p><span id="luminance">-- lux</span></div>
-        </div>
-    </section>
-
-    <!-- Soil Moisture Section -->
-    <section class="moisture">
-        <h2>🌱 Soil Moisture</h2>
-        <div class="moisture-grid">
-            <div class="pot-card">
-                <a href="{{ path('chart', {'pot': 'A'}) }}">Pot A 🌊</a>
-                <p><span id="potA">--%</span></p>
-            </div>
-            <div class="pot-card">
-                <a href="{{ path('chart', {'pot': 'B'}) }}">Pot B 🌊</a>
-                <p><span id="potB">--%</span></p>
-            </div>
-            <div class="pot-card">
-                <a href="{{ path('chart', {'pot': 'C'}) }}">Pot C 🌊</a>
-                <p><span id="potC">--%</span></p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Charts Section -->
-    <section class="charts">
-        <h2>📊 Environmental Data Trends</h2>
-        <div class="chart-container"><canvas id="temperatureChart"></canvas></div>
-        <div class="chart-container"><canvas id="humidityChart"></canvas></div>
-        <div class="chart-container"><canvas id="pressureChart"></canvas></div>
-        <div class="chart-container"><canvas id="luminanceChart"></canvas></div>
-    </section>
+{# Hidden data from server for instant loading #}
+<div id="prefetched-data" 
+     data-temperature="{{ latestData.temperature.value|default('') }}" 
+     data-humidity="{{ latestData.humidity.value|default('') }}"
+     data-pressure="{{ latestData.pressure.value|default('') }}"
+     data-luminance="{{ latestData.luminance.value|default('') }}"
+     data-moisture-a="{{ latestData.moisture_a.value|default('') }}"
+     data-moisture-b="{{ latestData.moisture_b.value|default('') }}"
+     data-moisture-c="{{ latestData.moisture_c.value|default('') }}"
+     class="hidden">
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<!-- Environmental Data Section -->
+<section class="weather">
+    <h2>🌤 Environmental Conditions</h2>
+    <div class="weather-grid">
+        <div class="card">
+            <div class="card-icon">🌡️</div>
+            <p>Temperature</p>
+            <span id="temperature" class="value-display">--°C</span>
+        </div>
+        <div class="card">
+            <div class="card-icon">💧</div>
+            <p>Humidity</p>
+            <span id="humidity" class="value-display">--%</span>
+        </div>
+        <div class="card">
+            <div class="card-icon">🌍</div>
+            <p>Pressure</p>
+            <span id="pressure" class="value-display">-- hPa</span>
+        </div>
+        <div class="card">
+            <div class="card-icon">💡</div>
+            <p>Luminance</p>
+            <span id="luminance" class="value-display">-- lux</span>
+        </div>
+    </div>
+</section>
 
+<!-- Soil Moisture Section -->
+<section class="moisture">
+    <h2>🌱 Soil Moisture</h2>
+    <div class="moisture-grid">
+        <div class="pot-card">
+            <div class="pot-icon">🌿</div>
+            <p>Pot A</p>
+            <span id="potA" class="value-display">--%</span>
+            <a href="{{ path('chart', {'pot': 'A'}) }}" class="view-details">View Details</a>
+        </div>
+        <div class="pot-card">
+            <div class="pot-icon">🌿</div>
+            <p>Pot B</p>
+            <span id="potB" class="value-display">--%</span>
+            <a href="{{ path('chart', {'pot': 'B'}) }}" class="view-details">View Details</a>
+        </div>
+        <div class="pot-card">
+            <div class="pot-icon">🌿</div>
+            <p>Pot C</p>
+            <span id="potC" class="value-display">--%</span>
+            <a href="{{ path('chart', {'pot': 'C'}) }}" class="view-details">View Details</a>
+        </div>
+    </div>
+</section>
+
+<!-- Charts Section -->
+<section class="charts">
+    <h2>📊 Environmental Data Trends</h2>
+    <div class="chart-container">
+        <div id="temperatureChart"></div>
+    </div>
+    <div class="chart-container">
+        <div id="humidityChart"></div>
+    </div>
+    <div class="chart-container">
+        <div id="pressureChart"></div>
+    </div>
+    <div class="chart-container">
+        <div id="luminanceChart"></div>
+    </div>
+</section>
+
+<footer class="dashboard-footer">
+    <p>© 2025 Plant Monitor System</p>
+</footer>
+
+</div>
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
-    let temperatureChart, humidityChart, pressureChart, luminanceChart;
+let temperatureChart, humidityChart, pressureChart, luminanceChart;
+let chartsInitialized = false;
 
-    function createChart(canvasId, label, color) {
-        const ctx = document.getElementById(canvasId)?.getContext("2d");
-        if (!ctx) {
-            console.error(`❌ Canvas element '${canvasId}' not found!`);
-            return null;
-        }
-
-        return new Chart(ctx, {
-            type: 'line',
-            data: {
-                datasets: [{
-                    label: label,
-                    data: [],
-                    borderColor: color,
-                    backgroundColor: "rgba(132, 27, 151, 0.3)",
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: { unit: 'hour', tooltipFormat: 'MMM dd HH:mm' },
-                        title: { display: true, text: "Time" }
-                    },
-                    y: {
-                        title: { display: true, text: label }
-                    }
-                },
-                plugins: {
-                    legend: { display: true, position: "top" }
+async function fetchLatestData() {
+        try {
+            // First, check if we have prefetched data available
+            const prefetchedData = document.getElementById('prefetched-data');
+            if (prefetchedData) {
+                const latestData = {
+                    temperature: parseFloat(prefetchedData.dataset.temperature) || null,
+                    humidity: parseFloat(prefetchedData.dataset.humidity) || null,
+                    pressure: parseFloat(prefetchedData.dataset.pressure) || null,
+                    luminance: parseFloat(prefetchedData.dataset.luminance) || null,
+                    moisture_a: parseFloat(prefetchedData.dataset.moistureA) || null,
+                    moisture_b: parseFloat(prefetchedData.dataset.moistureB) || null,
+                    moisture_c: parseFloat(prefetchedData.dataset.moistureC) || null
+                };
+                
+                // Only use prefetched data if at least some values are available
+                const hasValues = Object.values(latestData).some(value => value !== null);
+                
+                if (hasValues) {
+                    console.log("📊 Using prefetched data:", latestData);
+                    updateUIValues(latestData);
+                    
+                    // Clear the prefetched data to ensure fresh fetch next time
+                    prefetchedData.remove();
                 }
             }
-        });
-    }
-
-    async function fetchLatestData() {
-        try {
+            
+            // Fetch fresh data from API
             const response = await fetch('/influxdb/latest');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
             const data = await response.json();
             console.log("📊 Latest Data Received:", data);
 
@@ -106,154 +143,375 @@
                 return;
             }
 
+            // Process the data to get the latest values
             const latestData = {};
             data.forEach(entry => {
                 latestData[entry.measurement] = entry.value;
             });
 
-            document.getElementById("temperature").innerText = latestData.temperature ? latestData.temperature.toFixed(1) + "°C" : "--";
-            document.getElementById("humidity").innerText = latestData.humidity ? latestData.humidity.toFixed(1) + "%" : "--";
-            document.getElementById("pressure").innerText = latestData.pressure ? latestData.pressure.toFixed(1) + " hPa" : "--";
-            document.getElementById("luminance").innerText = latestData.luminance ? latestData.luminance.toFixed(1) + " lux" : "--";
-
-            document.getElementById("potA").innerText = latestData.moisture_a ? latestData.moisture_a.toFixed(1) + "%" : "--";
-            document.getElementById("potB").innerText = latestData.moisture_b ? latestData.moisture_b.toFixed(1) + "%" : "--";
-            document.getElementById("potC").innerText = latestData.moisture_c ? latestData.moisture_c.toFixed(1) + "%" : "--";
+            // Update the UI elements with the latest values
+            updateUIValues(latestData);
         } catch (error) {
             console.error("❌ Error fetching latest data:", error);
+        }
+    }
+
+    function updateUIValues(latestData) {
+        // Update environmental values
+        document.getElementById("temperature").innerText = latestData.temperature ? 
+            latestData.temperature.toFixed(1) + "°C" : "--";
+        document.getElementById("humidity").innerText = latestData.humidity ? 
+            latestData.humidity.toFixed(1) + "%" : "--";
+        document.getElementById("pressure").innerText = latestData.pressure ? 
+            latestData.pressure.toFixed(1) + " hPa" : "--";
+        document.getElementById("luminance").innerText = latestData.luminance ? 
+            latestData.luminance.toFixed(1) + " lux" : "--";
+
+        // Update pot moisture values
+        document.getElementById("potA").innerText = latestData.moisture_a ? 
+            latestData.moisture_a.toFixed(1) + "%" : "--";
+        document.getElementById("potB").innerText = latestData.moisture_b ? 
+            latestData.moisture_b.toFixed(1) + "%" : "--";
+        document.getElementById("potC").innerText = latestData.moisture_c ? 
+            latestData.moisture_c.toFixed(1) + "%" : "--";
+
+        // Update the UI classes based on moisture levels
+        updateMoistureClasses("potA", latestData.moisture_a);
+        updateMoistureClasses("potB", latestData.moisture_b);
+        updateMoistureClasses("potC", latestData.moisture_c);
+    }
+
+    function updateMoistureClasses(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (!element || value === undefined) return;
+
+        element.classList.remove("low-moisture", "medium-moisture", "high-moisture");
+        
+        if (value < 30) {
+            element.classList.add("low-moisture");
+        } else if (value < 60) {
+            element.classList.add("medium-moisture");
+        } else {
+            element.classList.add("high-moisture");
         }
     }
 
     async function fetchHistoricalData() {
         try {
             const response = await fetch('/influxdb/history');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
             const data = await response.json();
-
             console.log("📊 Historical Data Received:", data);
+            
             if (!Array.isArray(data) || data.length === 0) {
                 console.error("❌ No historical data received!");
                 return;
             }
 
-            function extractSortedData(measurement) {
-                return data.filter(d => d.measurement === measurement)
-                           .map(d => ({ x: new Date(d.time), y: d.value }))
-                           .sort((a, b) => a.x - b.x);
+            // Extract and format the data for each measurement
+            const processedData = {
+                temperature: extractSortedData(data, "temperature"),
+                humidity: extractSortedData(data, "humidity"),
+                pressure: extractSortedData(data, "pressure"),
+                luminance: extractSortedData(data, "luminance")
+            };
+
+            // Initialize or update the charts
+            if (!chartsInitialized) {
+                initializeCharts(processedData);
+                chartsInitialized = true;
+            } else {
+                updateCharts(processedData);
             }
-
-            updateChart(temperatureChart, extractSortedData("temperature"));
-            updateChart(humidityChart, extractSortedData("humidity"));
-            updateChart(pressureChart, extractSortedData("pressure"));
-            updateChart(luminanceChart, extractSortedData("luminance"));
-
         } catch (error) {
             console.error("❌ Error fetching historical data:", error);
         }
     }
 
-    function updateChart(chart, data) {
-        if (!chart) {
-            console.error("❌ Chart instance not found!");
-            return;
-        }
-        if (!chart.data.datasets.length) {
-            console.error("❌ Chart dataset is missing!");
-            return;
-        }
-        chart.data.datasets[0].data = data;
-        chart.update();
+    function extractSortedData(data, measurement) {
+        return data.filter(d => d.measurement === measurement)
+                  .map(d => ({
+                      x: new Date(d.time).getTime(),
+                      y: d.value
+                  }))
+                  .sort((a, b) => a.x - b.x);
     }
 
-    window.onload = function () {
-        console.log("✅ Initializing dashboard...");
-        temperatureChart = createChart("temperatureChart", "Temperature (°C)", "red");
-        humidityChart = createChart("humidityChart", "Humidity (%)", "blue");
-        pressureChart = createChart("pressureChart", "Pressure (hPa)", "green");
-        luminanceChart = createChart("luminanceChart", "Luminance (lux)", "orange");
+    function initializeCharts(data) {
+        // Temperature chart options
+        const temperatureOptions = {
+            series: [{
+                name: 'Temperature (°C)',
+                data: data.temperature
+            }],
+            chart: {
+                type: 'area',
+                height: 300,
+                fontFamily: 'Poppins, sans-serif',
+                toolbar: {
+                    show: false
+                },
+                zoom: {
+                    enabled: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 2
+            },
+            colors: ['#FF5252'],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.7,
+                    opacityTo: 0.3,
+                    stops: [0, 100]
+                }
+            },
+            xaxis: {
+                type: 'datetime',
+                labels: {
+                    formatter: function(val) {
+                        return new Date(val).toLocaleDateString();
+                    }
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Temperature (°C)'
+                }
+            },
+            tooltip: {
+                x: {
+                    format: 'dd MMM yyyy HH:mm'
+                }
+            }
+        };
 
+        // Humidity chart options
+        const humidityOptions = {
+            series: [{
+                name: 'Humidity (%)',
+                data: data.humidity
+            }],
+            chart: {
+                type: 'area',
+                height: 300,
+                fontFamily: 'Poppins, sans-serif',
+                toolbar: {
+                    show: false
+                },
+                zoom: {
+                    enabled: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 2
+            },
+            colors: ['#4D8AF0'],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.7,
+                    opacityTo: 0.3,
+                    stops: [0, 100]
+                }
+            },
+            xaxis: {
+                type: 'datetime',
+                labels: {
+                    formatter: function(val) {
+                        return new Date(val).toLocaleDateString();
+                    }
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Humidity (%)'
+                }
+            },
+            tooltip: {
+                x: {
+                    format: 'dd MMM yyyy HH:mm'
+                }
+            }
+        };
+
+        // Pressure chart options
+        const pressureOptions = {
+            series: [{
+                name: 'Pressure (hPa)',
+                data: data.pressure
+            }],
+            chart: {
+                type: 'area',
+                height: 300,
+                fontFamily: 'Poppins, sans-serif',
+                toolbar: {
+                    show: false
+                },
+                zoom: {
+                    enabled: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 2
+            },
+            colors: ['#43A047'],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.7,
+                    opacityTo: 0.3,
+                    stops: [0, 100]
+                }
+            },
+            xaxis: {
+                type: 'datetime',
+                labels: {
+                    formatter: function(val) {
+                        return new Date(val).toLocaleDateString();
+                    }
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Pressure (hPa)'
+                }
+            },
+            tooltip: {
+                x: {
+                    format: 'dd MMM yyyy HH:mm'
+                }
+            }
+        };
+
+        // Luminance chart options
+        const luminanceOptions = {
+            series: [{
+                name: 'Luminance (lux)',
+                data: data.luminance
+            }],
+            chart: {
+                type: 'area',
+                height: 300,
+                fontFamily: 'Poppins, sans-serif',
+                toolbar: {
+                    show: false
+                },
+                zoom: {
+                    enabled: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 2
+            },
+            colors: ['#FB8C00'],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.7,
+                    opacityTo: 0.3,
+                    stops: [0, 100]
+                }
+            },
+            xaxis: {
+                type: 'datetime',
+                labels: {
+                    formatter: function(val) {
+                        return new Date(val).toLocaleDateString();
+                    }
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Luminance (lux)'
+                }
+            },
+            tooltip: {
+                x: {
+                    format: 'dd MMM yyyy HH:mm'
+                }
+            }
+        };
+
+        // Initialize the charts
+        temperatureChart = new ApexCharts(document.querySelector("#temperatureChart"), temperatureOptions);
+        humidityChart = new ApexCharts(document.querySelector("#humidityChart"), humidityOptions);
+        pressureChart = new ApexCharts(document.querySelector("#pressureChart"), pressureOptions);
+        luminanceChart = new ApexCharts(document.querySelector("#luminanceChart"), luminanceOptions);
+
+        temperatureChart.render();
+        humidityChart.render();
+        pressureChart.render();
+        luminanceChart.render();
+    }
+
+    function updateCharts(data) {
+        if (temperatureChart) {
+            temperatureChart.updateSeries([{
+                name: 'Temperature (°C)',
+                data: data.temperature
+            }]);
+        }
+
+        if (humidityChart) {
+            humidityChart.updateSeries([{
+                name: 'Humidity (%)',
+                data: data.humidity
+            }]);
+        }
+
+        if (pressureChart) {
+            pressureChart.updateSeries([{
+                name: 'Pressure (hPa)',
+                data: data.pressure
+            }]);
+        }
+
+        if (luminanceChart) {
+            luminanceChart.updateSeries([{
+                name: 'Luminance (lux)',
+                data: data.luminance
+            }]);
+        }
+    }
+
+    // Initialize and set up data fetch intervals
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("✅ Dashboard initialized");
+        
+        // Fetch data immediately when the page loads
         fetchLatestData();
         fetchHistoricalData();
+        
+        // Set up intervals for periodic updates
         setInterval(fetchLatestData, 60000);
-        setInterval(fetchHistoricalData, 60000);
-    };
+        setInterval(fetchHistoricalData, 300000);
+    });
 </script>
 
-<style>
-    body {
-        background-color: #edf7e1;
-        font-family: "Poppins", sans-serif;
-    }
-
-    .container {
-        width: 75%;
-        margin: auto;
-        text-align: center;
-    }
-
-    .dashboard-header {
-    background: #4CAF50;
-    padding: 15px; /* Reduce padding */
-    color: white;
-    font-size: 1.5rem; /* Reduce font size slightly */
-    border-radius: 12px;
-    font-weight: bold;
-    }
-
-    .weather, .moisture, .charts {
-        background: white;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 20px 0;
-        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .weather h2, .moisture h2, .charts h2 {
-        color: #2d6a4f;
-        font-weight: bold;
-        margin-bottom: 15px;
-    }
-
-    .weather-grid, .moisture-grid {
-        display: flex;
-        justify-content: space-around;
-        gap: 20px;
-    }
-
-    .card, .pot-card {
-        background: #eaf4ea;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 3px 3px 12px rgba(0, 0, 0, 0.1);
-        width: 22%;
-        text-align: center;
-        font-weight: bold;
-        transition: transform 0.2s ease-in-out;
-    }
-
-    .pot-card {
-        background: #cce3de;
-    }
-
-    .card:hover, .pot-card:hover {
-        transform: scale(1.05);
-    }
-
-    .charts {
-        padding: 20px;
-    }
-
-    .chart-container {
-        background: #f3fae8;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 20px;
-        box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
-    }
-
-    canvas {
-        width: 100% !important;
-        height: 400px !important;
-    }
-</style>
-
+{% endblock %}
 {% endblock %}

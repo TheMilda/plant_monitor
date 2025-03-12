@@ -1,116 +1,246 @@
 {% extends 'base.html.twig' %}
-
 {% block title %}Pot {{ pot }} - Moisture Chart{% endblock %}
-
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/style.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+{% endblock %}
 {% block body %}
 <div class="container">
-    <h1>🌿 Moisture Trends - Pot {{ pot }}</h1>
-    <div class="chart-container">
-        <canvas id="moistureChart"></canvas>
-    </div>
-    <a href="{{ path('dashboard') }}" class="back-btn">⬅ Back to Dashboard</a>
+    <header class="chart-header">
+        <h1>🌿 Moisture Trends - Pot {{ pot }}</h1>
+    </header>
+
+{# Store current value for immediate rendering #}
+<div id="current-data" data-value="{{ currentValue ?? '' }}" class="hidden"></div>
+
+<div class="chart-detail-container">
+    <div id="moistureChart"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<div class="status-overview">
+    <div class="status-card">
+        <div class="status-icon">📊</div>
+        <p>Current</p>
+        <span id="currentMoisture" class="value-display">--%</span>
+    </div>
+    <div class="status-card">
+        <div class="status-icon">📈</div>
+        <p>Average</p>
+        <span id="avgMoisture" class="value-display">--%</span>
+    </div>
+    <div class="status-card">
+        <div class="status-icon">📉</div>
+        <p>Min</p>
+        <span id="minMoisture" class="value-display">--%</span>
+    </div>
+    <div class="status-card">
+        <div class="status-icon">📈</div>
+        <p>Max</p>
+        <span id="maxMoisture" class="value-display">--%</span>
+    </div>
+</div>
 
+<a href="{{ path('dashboard') }}" class="back-btn">⬅ Back to Dashboard</a>
+
+</div>
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
-    async function fetchMoistureData() {
+let moistureChart;
+
+async function fetchMoistureData() {
         try {
+            // Check if we have a current value already
+            const currentDataEl = document.getElementById('current-data');
+            let currentValueFromServer = null;
+            
+            if (currentDataEl && currentDataEl.dataset.value) {
+                currentValueFromServer = parseFloat(currentDataEl.dataset.value);
+                
+                // Show the current value immediately while waiting for historical data
+                if (currentValueFromServer) {
+                    document.getElementById("currentMoisture").innerText = 
+                        currentValueFromServer.toFixed(1) + "%";
+                    updateMoistureClass("currentMoisture", currentValueFromServer);
+                }
+            }
+            
             const response = await fetch('/influxdb/history');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
             const data = await response.json();
-
+            
+            // Filter data for this specific pot's moisture
             const filteredData = data.filter(d => d.measurement === "{{ measurement }}")
-                                     .map(d => ({ x: new Date(d.time), y: d.value }))
-                                     .sort((a, b) => a.x - b.x);
-
-            updateMoistureChart(filteredData);
+                                    .map(d => ({
+                                        x: new Date(d.time).getTime(),
+                                        y: d.value
+                                    }))
+                                    .sort((a, b) => a.x - b.x);
+            
+            if (filteredData.length === 0) {
+                console.error("❌ No moisture data available for this pot");
+                return;
+            }
+            
+            // Calculate statistics
+            const values = filteredData.map(item => item.y);
+            // Use server-provided value or last datapoint from historical data
+            const currentValue = currentValueFromServer || values[values.length - 1];
+            const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+            const minValue = Math.min(...values);
+            const maxValue = Math.max(...values);
+            
+            // Update statistics display
+            document.getElementById("currentMoisture").innerText = currentValue ? 
+                currentValue.toFixed(1) + "%" : "--";
+            document.getElementById("avgMoisture").innerText = 
+                avgValue.toFixed(1) + "%";
+            document.getElementById("minMoisture").innerText = 
+                minValue.toFixed(1) + "%";
+            document.getElementById("maxMoisture").innerText = 
+                maxValue.toFixed(1) + "%";
+            
+            // Update moisture status class
+            updateMoistureClass("currentMoisture", currentValue);
+            
+            // Initialize the chart
+            initializeMoistureChart(filteredData);
+            
         } catch (error) {
             console.error("❌ Error fetching moisture data:", error);
         }
     }
-
-    function updateMoistureChart(data) {
-        const ctx = document.getElementById("moistureChart").getContext("2d");
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                datasets: [{
-                    label: "Soil Moisture (%)",
-                    data: data,
-                    borderColor: "#2E7D32", // Deep green
-                    backgroundColor: "rgba(46, 125, 50, 0.2)", // Soft green fill
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: { unit: 'hour', tooltipFormat: 'MMM dd HH:mm' },
-                        title: { display: true, text: "Date & Time" }
-                    },
-                    y: {
-                        title: { display: true, text: "Moisture Level (%)" }
-                    }
-                },
-                plugins: {
-                    legend: { display: true, position: "top" }
-                }
-            }
-        });
-    }
-
-    fetchMoistureData();
-</script>
-
-<style>
-    body {
-        background-color: #E8F5E9; /* Soft green background */
-        font-family: 'Arial', sans-serif;
+    
+    function updateMoistureClass(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (!element || value === undefined) return;
+        
+        element.classList.remove("low-moisture", "medium-moisture", "high-moisture");
+        
+        if (value < 30) {
+            element.classList.add("low-moisture");
+        } else if (value < 60) {
+            element.classList.add("medium-moisture");
+        } else {
+            element.classList.add("high-moisture");
+        }
     }
     
-    .container {
-        text-align: center;
-        padding: 20px;
+    function initializeMoistureChart(data) {
+        const options = {
+            series: [{
+                name: 'Moisture (%)',
+                data: data
+            }],
+            chart: {
+                type: 'area',
+                height: 400,
+                fontFamily: 'Poppins, sans-serif',
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800
+                },
+                toolbar: {
+                    show: true,
+                    tools: {
+                        download: true,
+                        selection: true,
+                        zoom: true,
+                        zoomin: true,
+                        zoomout: true,
+                        pan: true
+                    }
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 3
+            },
+            colors: ['#1B5E20'],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.7,
+                    opacityTo: 0.3,
+                    stops: [0, 90, 100],
+                    colorStops: [
+                        {
+                            offset: 0,
+                            color: '#1B5E20',
+                            opacity: 0.6
+                        },
+                        {
+                            offset: 100,
+                            color: '#81C784',
+                            opacity: 0.1
+                        }
+                    ]
+                }
+            },
+            markers: {
+                size: 3,
+                colors: ['#1B5E20'],
+                strokeWidth: 0,
+                hover: {
+                    size: 5
+                }
+            },
+            xaxis: {
+                type: 'datetime',
+                title: {
+                    text: 'Date & Time'
+                },
+                labels: {
+                    formatter: function(val) {
+                        return new Date(val).toLocaleDateString() + ' ' + 
+                               new Date(val).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    }
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Moisture Level (%)'
+                },
+                min: function(min) {
+                    return min * 0.8; // Start y-axis at 80% of minimum value
+                }
+            },
+            tooltip: {
+                x: {
+                    format: 'dd MMM yyyy HH:mm'
+                }
+            },
+            grid: {
+                borderColor: '#e7e7e7',
+                row: {
+                    colors: ['#f3f3f3', 'transparent'],
+                    opacity: 0.5
+                }
+            },
+            theme: {
+                mode: 'light',
+                palette: 'palette1'
+            }
+        };
+        
+        moistureChart = new ApexCharts(document.querySelector("#moistureChart"), options);
+        moistureChart.render();
     }
+    
+    // Initialize when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("✅ Moisture chart page initialized");
+        fetchMoistureData();
+    });
+</script>
 
-    h1 {
-        color: #1B5E20; /* Dark green */
-        font-weight: bold;
-    }
-
-    .chart-container {
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-        margin: auto;
-        max-width: 90%;
-        min-height: 450px; /* Ensure the chart has enough space */
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .back-btn {
-        display: inline-block;
-        margin-top: 20px;
-        padding: 12px 25px;
-        background-color: #4CAF50; /* Green */
-        color: white;
-        text-decoration: none;
-        border-radius: 8px;
-        font-weight: bold;
-        transition: 0.3s ease;
-    }
-
-    .back-btn:hover {
-        background-color: #388E3C; /* Darker green */
-    }
-
-</style>
+{% endblock %}
 {% endblock %}

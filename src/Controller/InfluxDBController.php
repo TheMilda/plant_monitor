@@ -9,6 +9,9 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class InfluxDBController extends AbstractController
 {
+    /**
+     * Get the latest data from InfluxDB
+     */
     #[Route('/influxdb/latest', name: 'get_latest_influxdb_data', methods: ['GET'])]
     public function getLatestData(InfluxDBService $influxDBService): JsonResponse
     {
@@ -20,6 +23,9 @@ class InfluxDBController extends AbstractController
         }
     }
 
+    /**
+     * Get historical data from InfluxDB
+     */
     #[Route('/influxdb/history', name: 'get_historical_data', methods: ['GET'])]
     public function getHistoricalData(InfluxDBService $influxDBService): JsonResponse
     {
@@ -31,4 +37,3 @@ class InfluxDBController extends AbstractController
         }
     }
 }
-
