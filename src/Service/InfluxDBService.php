@@ -165,7 +165,6 @@ class InfluxDBService
                                      r["_measurement"] == "moisture_a" or 
                                      r["_measurement"] == "moisture_b" or 
                                      r["_measurement"] == "moisture_c")
-                |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)
                 |> sort(columns: ["_time"], desc: false)
         EOT;
 
