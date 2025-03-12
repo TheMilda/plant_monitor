@@ -1,246 +1,270 @@
 {% extends 'base.html.twig' %}
+
 {% block title %}Pot {{ pot }} - Moisture Chart{% endblock %}
+
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ asset('css/style.css') }}">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 {% endblock %}
+
 {% block body %}
 <div class="container">
     <header class="chart-header">
         <h1>🌿 Moisture Trends - Pot {{ pot }}</h1>
     </header>
+    
+    {# Store current value for immediate rendering #}
+    <div id="current-data" data-value="{{ currentValue ?? '' }}" class="hidden"></div>
 
-{# Store current value for immediate rendering #}
-<div id="current-data" data-value="{{ currentValue ?? '' }}" class="hidden"></div>
-
-<div class="chart-detail-container">
-    <div id="moistureChart"></div>
+    <div class="chart-detail-container">
+        <div id="moistureChart"></div>
+    </div>
+    
+    <div class="status-overview">
+        <div class="status-card">
+            <div class="status-icon">📊</div>
+            <p>Current</p>
+            <span id="currentMoisture" class="value-display">--%</span>
+        </div>
+        <div class="status-card">
+            <div class="status-icon">📈</div>
+            <p>Average</p>
+            <span id="avgMoisture" class="value-display">--%</span>
+        </div>
+        <div class="status-card">
+            <div class="status-icon">📉</div>
+            <p>Min</p>
+            <span id="minMoisture" class="value-display">--%</span>
+        </div>
+        <div class="status-card">
+            <div class="status-icon">📈</div>
+            <p>Max</p>
+            <span id="maxMoisture" class="value-display">--%</span>
+        </div>
+    </div>
+    
+    <a href="{{ path('dashboard') }}" class="back-btn">⬅ Back to Dashboard</a>
 </div>
 
-<div class="status-overview">
-    <div class="status-card">
-        <div class="status-icon">📊</div>
-        <p>Current</p>
-        <span id="currentMoisture" class="value-display">--%</span>
-    </div>
-    <div class="status-card">
-        <div class="status-icon">📈</div>
-        <p>Average</p>
-        <span id="avgMoisture" class="value-display">--%</span>
-    </div>
-    <div class="status-card">
-        <div class="status-icon">📉</div>
-        <p>Min</p>
-        <span id="minMoisture" class="value-display">--%</span>
-    </div>
-    <div class="status-card">
-        <div class="status-icon">📈</div>
-        <p>Max</p>
-        <span id="maxMoisture" class="value-display">--%</span>
-    </div>
-</div>
-
-<a href="{{ path('dashboard') }}" class="back-btn">⬅ Back to Dashboard</a>
-
-</div>
 {% block javascripts %}
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-<script>
-let moistureChart;
-
-async function fetchMoistureData() {
-        try {
-            // Check if we have a current value already
-            const currentDataEl = document.getElementById('current-data');
-            let currentValueFromServer = null;
-            
-            if (currentDataEl && currentDataEl.dataset.value) {
-                currentValueFromServer = parseFloat(currentDataEl.dataset.value);
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        window.moistureChart = null;
+        
+        async function fetchMoistureData() {
+            try {
+                // Check if we have a current value already
+                const currentDataEl = document.getElementById('current-data');
+                let currentValueFromServer = null;
                 
-                // Show the current value immediately while waiting for historical data
-                if (currentValueFromServer) {
-                    document.getElementById("currentMoisture").innerText = 
-                        currentValueFromServer.toFixed(1) + "%";
-                    updateMoistureClass("currentMoisture", currentValueFromServer);
-                }
-            }
-            
-            const response = await fetch('/influxdb/history');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            // Filter data for this specific pot's moisture
-            const filteredData = data.filter(d => d.measurement === "{{ measurement }}")
-                                    .map(d => ({
-                                        x: new Date(d.time).getTime(),
-                                        y: d.value
-                                    }))
-                                    .sort((a, b) => a.x - b.x);
-            
-            if (filteredData.length === 0) {
-                console.error("❌ No moisture data available for this pot");
-                return;
-            }
-            
-            // Calculate statistics
-            const values = filteredData.map(item => item.y);
-            // Use server-provided value or last datapoint from historical data
-            const currentValue = currentValueFromServer || values[values.length - 1];
-            const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
-            const minValue = Math.min(...values);
-            const maxValue = Math.max(...values);
-            
-            // Update statistics display
-            document.getElementById("currentMoisture").innerText = currentValue ? 
-                currentValue.toFixed(1) + "%" : "--";
-            document.getElementById("avgMoisture").innerText = 
-                avgValue.toFixed(1) + "%";
-            document.getElementById("minMoisture").innerText = 
-                minValue.toFixed(1) + "%";
-            document.getElementById("maxMoisture").innerText = 
-                maxValue.toFixed(1) + "%";
-            
-            // Update moisture status class
-            updateMoistureClass("currentMoisture", currentValue);
-            
-            // Initialize the chart
-            initializeMoistureChart(filteredData);
-            
-        } catch (error) {
-            console.error("❌ Error fetching moisture data:", error);
-        }
-    }
-    
-    function updateMoistureClass(elementId, value) {
-        const element = document.getElementById(elementId);
-        if (!element || value === undefined) return;
-        
-        element.classList.remove("low-moisture", "medium-moisture", "high-moisture");
-        
-        if (value < 30) {
-            element.classList.add("low-moisture");
-        } else if (value < 60) {
-            element.classList.add("medium-moisture");
-        } else {
-            element.classList.add("high-moisture");
-        }
-    }
-    
-    function initializeMoistureChart(data) {
-        const options = {
-            series: [{
-                name: 'Moisture (%)',
-                data: data
-            }],
-            chart: {
-                type: 'area',
-                height: 400,
-                fontFamily: 'Poppins, sans-serif',
-                animations: {
-                    enabled: true,
-                    easing: 'easeinout',
-                    speed: 800
-                },
-                toolbar: {
-                    show: true,
-                    tools: {
-                        download: true,
-                        selection: true,
-                        zoom: true,
-                        zoomin: true,
-                        zoomout: true,
-                        pan: true
+                if (currentDataEl && currentDataEl.dataset.value) {
+                    currentValueFromServer = parseFloat(currentDataEl.dataset.value);
+                    
+                    // Show the current value immediately while waiting for historical data
+                    if (currentValueFromServer) {
+                        document.getElementById("currentMoisture").innerText = 
+                            currentValueFromServer.toFixed(1) + "%";
+                        updateMoistureClass("currentMoisture", currentValueFromServer);
                     }
                 }
-            },
-            dataLabels: {
-                enabled: false
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 3
-            },
-            colors: ['#1B5E20'],
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shadeIntensity: 1,
-                    opacityFrom: 0.7,
-                    opacityTo: 0.3,
-                    stops: [0, 90, 100],
-                    colorStops: [
-                        {
-                            offset: 0,
-                            color: '#1B5E20',
-                            opacity: 0.6
-                        },
-                        {
-                            offset: 100,
-                            color: '#81C784',
-                            opacity: 0.1
+                
+                const response = await fetch('/influxdb/history');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Filter data for this specific pot's moisture
+                const filteredData = data.filter(d => d.measurement === "{{ measurement }}")
+                                        .map(d => ({
+                                            x: new Date(d.time).getTime(),
+                                            y: d.value
+                                        }))
+                                        .sort((a, b) => a.x - b.x);
+                
+                if (filteredData.length === 0) {
+                    console.error("❌ No moisture data available for this pot");
+                    return;
+                }
+                
+                // Calculate statistics
+                const values = filteredData.map(item => item.y);
+                // Use server-provided value or last datapoint from historical data
+                const currentValue = currentValueFromServer || values[values.length - 1];
+                const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+                const minValue = Math.min(...values);
+                const maxValue = Math.max(...values);
+                
+                // Update statistics display
+                document.getElementById("currentMoisture").innerText = currentValue ? 
+                    currentValue.toFixed(1) + "%" : "--";
+                document.getElementById("avgMoisture").innerText = 
+                    avgValue.toFixed(1) + "%";
+                document.getElementById("minMoisture").innerText = 
+                    minValue.toFixed(1) + "%";
+                document.getElementById("maxMoisture").innerText = 
+                    maxValue.toFixed(1) + "%";
+                
+                // Update moisture status class
+                updateMoistureClass("currentMoisture", currentValue);
+                
+                // Initialize the chart
+                initializeMoistureChart(filteredData);
+                
+            } catch (error) {
+                console.error("❌ Error fetching moisture data:", error);
+            }
+        }
+        
+        function updateMoistureClass(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (!element || value === undefined) return;
+            
+            element.classList.remove("low-moisture", "medium-moisture", "high-moisture");
+            
+            if (value < 30) {
+                element.classList.add("low-moisture");
+            } else if (value < 60) {
+                element.classList.add("medium-moisture");
+            } else {
+                element.classList.add("high-moisture");
+            }
+        }
+        
+        function initializeMoistureChart(data) {
+            const options = {
+                series: [{
+                    name: 'Moisture (%)',
+                    data: data
+                }],
+                chart: {
+                    type: 'area',
+                    height: 400,
+                    fontFamily: 'Poppins, sans-serif',
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800
+                    },
+                    toolbar: {
+                        show: true,
+                        tools: {
+                            download: true,
+                            selection: true,
+                            zoom: true,
+                            zoomin: true,
+                            zoomout: true,
+                            pan: true
                         }
-                    ]
-                }
-            },
-            markers: {
-                size: 3,
-                colors: ['#1B5E20'],
-                strokeWidth: 0,
-                hover: {
-                    size: 5
-                }
-            },
-            xaxis: {
-                type: 'datetime',
-                title: {
-                    text: 'Date & Time'
-                },
-                labels: {
-                    formatter: function(val) {
-                        return new Date(val).toLocaleDateString() + ' ' + 
-                               new Date(val).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     }
-                }
-            },
-            yaxis: {
-                title: {
-                    text: 'Moisture Level (%)'
                 },
-                min: function(min) {
-                    return min * 0.8; // Start y-axis at 80% of minimum value
+                dataLabels: {
+                    enabled: false
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 3
+                },
+                colors: ['#1B5E20'],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.3,
+                        stops: [0, 90, 100],
+                        colorStops: [
+                            {
+                                offset: 0,
+                                color: '#1B5E20',
+                                opacity: 0.6
+                            },
+                            {
+                                offset: 100,
+                                color: '#81C784',
+                                opacity: 0.1
+                            }
+                        ]
+                    }
+                },
+                markers: {
+                    size: 4,
+                    colors: ['#1B5E20'],
+                    strokeWidth: 0,
+                    hover: {
+                        size: 7
+                    }
+                },
+                xaxis: {
+                    type: 'datetime',
+                    title: {
+                        text: 'Date & Time'
+                    },
+                    labels: {
+                        datetimeUTC: false,
+                        format: 'dd.MM HH:mm'
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                },
+                yaxis: {
+                    title: {
+                        text: 'Moisture Level (%)'
+                    },
+                    min: 0,
+                    max: function(max) {
+                        return Math.ceil(max * 1.1); // Add 10% padding to the max value
+                    },
+                    labels: {
+                        formatter: function(val) {
+                            return val.toFixed(1);
+                        }
+                    },
+                    decimalsInFloat: 1
+                },
+                tooltip: {
+                    shared: false,
+                    x: {
+                        format: 'dd.MM.yyyy HH:mm'
+                    },
+                    y: {
+                        formatter: function(val) {
+                            return val.toFixed(1) + '%';
+                        }
+                    },
+                    marker: {
+                        show: true
+                    }
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    row: {
+                        colors: ['#f3f3f3', 'transparent'],
+                        opacity: 0.5
+                    }
+                },
+                theme: {
+                    mode: 'light',
+                    palette: 'palette1'
                 }
-            },
-            tooltip: {
-                x: {
-                    format: 'dd MMM yyyy HH:mm'
-                }
-            },
-            grid: {
-                borderColor: '#e7e7e7',
-                row: {
-                    colors: ['#f3f3f3', 'transparent'],
-                    opacity: 0.5
-                }
-            },
-            theme: {
-                mode: 'light',
-                palette: 'palette1'
+            };
+            
+            // If chart already exists, destroy it first
+            if (window.moistureChart) {
+                window.moistureChart.destroy();
             }
-        };
+            
+            window.moistureChart = new ApexCharts(document.querySelector("#moistureChart"), options);
+            window.moistureChart.render();
+        }
         
-        moistureChart = new ApexCharts(document.querySelector("#moistureChart"), options);
-        moistureChart.render();
-    }
-    
-    // Initialize when the DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log("✅ Moisture chart page initialized");
-        fetchMoistureData();
-    });
-</script>
-
+        // Initialize when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("✅ Moisture chart page initialized");
+            fetchMoistureData();
+        });
+    </script>
 {% endblock %}
 {% endblock %}

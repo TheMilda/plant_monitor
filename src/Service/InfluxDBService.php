@@ -17,7 +17,7 @@ class InfluxDBService
     private FilesystemAdapter $cache;
     private LoggerInterface $logger;
 
-    public function __construct(RequestStack $requestStack, LoggerInterface $logger)
+    public function __construct(LoggerInterface $logger = null)
     {
         $this->influxdbUrl = $_SERVER["INFLUXDB_URL"] ?? '';
         $this->influxdbToken = $_SERVER["INFLUXDB_TOKEN"] ?? '';
@@ -25,7 +25,7 @@ class InfluxDBService
         $this->influxdbBucket = $_SERVER["INFLUXDB_BUCKET"] ?? '';
         $this->client = new Client();
         $this->cache = new FilesystemAdapter('influxdb_cache', 300);
-        $this->logger = $logger;
+        $this->logger = $logger ?? new \Psr\Log\NullLogger();
     }
 
     /**
@@ -59,14 +59,85 @@ class InfluxDBService
         try {
             $data = $this->fetchInfluxDBData($query);
             
+            // Make sure all measurements are represented
+            $expectedMeasurements = [
+                'temperature',
+                'humidity',
+                'pressure',
+                'luminance',
+                'moisture_a',
+                'moisture_b',
+                'moisture_c'
+            ];
+            
+            // Check if any measurements are missing
+            $existingMeasurements = array_column($data, 'measurement');
+            $missingMeasurements = array_diff($expectedMeasurements, $existingMeasurements);
+            
+            // Check for potentially incorrect values (like 0.0 for luminance during daytime)
+            foreach ($data as $index => $item) {
+                if ($item['measurement'] === 'luminance') {
+                    $hour = (int)date('H');
+                    $isDaytime = ($hour >= 7 && $hour <= 19);
+                    
+                    // If it's daytime and luminance is suspiciously low, flag it for replacement
+                    if ($isDaytime && $item['value'] < 0.5) {
+                        $this->logger->info('Suspicious luminance value during daytime: ' . $item['value']);
+                        if (!in_array('luminance', $missingMeasurements)) {
+                            $missingMeasurements[] = 'luminance';
+                        }
+                        // Remove the suspicious data
+                        unset($data[$index]);
+                    }
+                }
+            }
+            
+            // Reindex array after potential deletions
+            $data = array_values($data);
+            
+            // If we have missing measurements, add fallback data from cache if available
+            if (!empty($missingMeasurements)) {
+                $this->logger->info('Missing measurements: ' . implode(', ', $missingMeasurements));
+                
+                // Try to get previous data from cache
+                $previousDataItem = $this->cache->getItem('previous_latest_data');
+                if ($previousDataItem->isHit()) {
+                    $previousData = $previousDataItem->get();
+                    
+                    // Add missing measurements from previous data
+                    foreach ($missingMeasurements as $missingMeasurement) {
+                        foreach ($previousData as $previous) {
+                            if ($previous['measurement'] === $missingMeasurement) {
+                                $data[] = $previous;
+                                $this->logger->info("Using previous data for {$missingMeasurement}");
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Cache the results for 60 seconds
             $cachedItem->set($data);
             $cachedItem->expiresAfter(60);
             $this->cache->save($cachedItem);
             
+            // Also store as previous data with longer expiry
+            $previousDataItem = $this->cache->getItem('previous_latest_data');
+            $previousDataItem->set($data);
+            $previousDataItem->expiresAfter(3600); // Keep previous data for an hour
+            $this->cache->save($previousDataItem);
+            
             return $data;
         } catch (\Exception $e) {
             $this->logger->error('Error fetching latest data: ' . $e->getMessage());
+            
+            // Try to return cached data even if it's expired
+            $previousDataItem = $this->cache->getItem('previous_latest_data');
+            if ($previousDataItem->isHit()) {
+                return $previousDataItem->get();
+            }
+            
             return [];
         }
     }
@@ -109,6 +180,13 @@ class InfluxDBService
             return $data;
         } catch (\Exception $e) {
             $this->logger->error('Error fetching historical data: ' . $e->getMessage());
+            
+            // Try to return cached data even if it's expired
+            $previousHistoryItem = $this->cache->getItem('previous_historical_data');
+            if ($previousHistoryItem->isHit()) {
+                return $previousHistoryItem->get();
+            }
+            
             return [];
         }
     }
@@ -135,6 +213,8 @@ class InfluxDBService
                         'annotations' => ['datatype'],
                     ],
                 ],
+                'timeout' => 10,
+                'connect_timeout' => 5
             ]);
 
             $csvData = $response->getBody()->getContents();

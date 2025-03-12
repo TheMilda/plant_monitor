@@ -1,517 +1,634 @@
 {% extends 'base.html.twig' %}
+
 {% block title %}Plant Monitor Dashboard{% endblock %}
+
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ asset('css/style.css') }}">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 {% endblock %}
+
 {% block body %}
 <div class="container">
     <header class="dashboard-header">
         <h1>🌿 Plant Monitor Dashboard</h1>
         <p>{{ "now"|date("D, M d Y") }}</p>
     </header>
-{# Hidden data from server for instant loading #}
-<div id="prefetched-data" 
-     data-temperature="{{ latestData.temperature.value|default('') }}" 
-     data-humidity="{{ latestData.humidity.value|default('') }}"
-     data-pressure="{{ latestData.pressure.value|default('') }}"
-     data-luminance="{{ latestData.luminance.value|default('') }}"
-     data-moisture-a="{{ latestData.moisture_a.value|default('') }}"
-     data-moisture-b="{{ latestData.moisture_b.value|default('') }}"
-     data-moisture-c="{{ latestData.moisture_c.value|default('') }}"
-     class="hidden">
+
+    {# Hidden data from server for instant loading #}
+    <div id="prefetched-data" 
+         data-temperature="{{ latestData.temperature.value|default('') }}" 
+         data-humidity="{{ latestData.humidity.value|default('') }}"
+         data-pressure="{{ latestData.pressure.value|default('') }}"
+         data-luminance="{{ latestData.luminance.value|default('') }}"
+         data-moisture-a="{{ latestData.moisture_a.value|default('') }}"
+         data-moisture-b="{{ latestData.moisture_b.value|default('') }}"
+         data-moisture-c="{{ latestData.moisture_c.value|default('') }}"
+         class="hidden">
+    </div>
+
+    <!-- Environmental Data Section -->
+    <section class="weather">
+        <h2>🌤 Environmental Conditions</h2>
+        <div class="weather-grid">
+            <div class="card">
+                <div class="card-icon">🌡️</div>
+                <p>Temperature</p>
+                <span id="temperature" class="value-display">--°C</span>
+            </div>
+            <div class="card">
+                <div class="card-icon">💧</div>
+                <p>Humidity</p>
+                <span id="humidity" class="value-display">--%</span>
+            </div>
+            <div class="card">
+                <div class="card-icon">🌍</div>
+                <p>Pressure</p>
+                <span id="pressure" class="value-display">-- hPa</span>
+            </div>
+            <div class="card">
+                <div class="card-icon">💡</div>
+                <p>Luminance</p>
+                <span id="luminance" class="value-display">-- lux</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Soil Moisture Section -->
+    <section class="moisture">
+        <h2>🌱 Soil Moisture</h2>
+        <div class="moisture-grid">
+            <div class="pot-card">
+                <div class="pot-icon">🌿</div>
+                <p>Pot A</p>
+                <span id="potA" class="value-display">--%</span>
+                <a href="{{ path('chart', {'pot': 'A'}) }}" class="view-details">View Details</a>
+            </div>
+            <div class="pot-card">
+                <div class="pot-icon">🌿</div>
+                <p>Pot B</p>
+                <span id="potB" class="value-display">--%</span>
+                <a href="{{ path('chart', {'pot': 'B'}) }}" class="view-details">View Details</a>
+            </div>
+            <div class="pot-card">
+                <div class="pot-icon">🌿</div>
+                <p>Pot C</p>
+                <span id="potC" class="value-display">--%</span>
+                <a href="{{ path('chart', {'pot': 'C'}) }}" class="view-details">View Details</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="charts">
+        <h2>📊 Environmental Data Trends</h2>
+        <div class="chart-container">
+            <div id="temperatureChart"></div>
+        </div>
+        <div class="chart-container">
+            <div id="humidityChart"></div>
+        </div>
+        <div class="chart-container">
+            <div id="pressureChart"></div>
+        </div>
+        <div class="chart-container">
+            <div id="luminanceChart"></div>
+        </div>
+    </section>
+
+    <footer class="dashboard-footer">
+        <p>© 2025 Plant Monitor System</p>
+    </footer>
 </div>
 
-<!-- Environmental Data Section -->
-<section class="weather">
-    <h2>🌤 Environmental Conditions</h2>
-    <div class="weather-grid">
-        <div class="card">
-            <div class="card-icon">🌡️</div>
-            <p>Temperature</p>
-            <span id="temperature" class="value-display">--°C</span>
-        </div>
-        <div class="card">
-            <div class="card-icon">💧</div>
-            <p>Humidity</p>
-            <span id="humidity" class="value-display">--%</span>
-        </div>
-        <div class="card">
-            <div class="card-icon">🌍</div>
-            <p>Pressure</p>
-            <span id="pressure" class="value-display">-- hPa</span>
-        </div>
-        <div class="card">
-            <div class="card-icon">💡</div>
-            <p>Luminance</p>
-            <span id="luminance" class="value-display">-- lux</span>
-        </div>
-    </div>
-</section>
-
-<!-- Soil Moisture Section -->
-<section class="moisture">
-    <h2>🌱 Soil Moisture</h2>
-    <div class="moisture-grid">
-        <div class="pot-card">
-            <div class="pot-icon">🌿</div>
-            <p>Pot A</p>
-            <span id="potA" class="value-display">--%</span>
-            <a href="{{ path('chart', {'pot': 'A'}) }}" class="view-details">View Details</a>
-        </div>
-        <div class="pot-card">
-            <div class="pot-icon">🌿</div>
-            <p>Pot B</p>
-            <span id="potB" class="value-display">--%</span>
-            <a href="{{ path('chart', {'pot': 'B'}) }}" class="view-details">View Details</a>
-        </div>
-        <div class="pot-card">
-            <div class="pot-icon">🌿</div>
-            <p>Pot C</p>
-            <span id="potC" class="value-display">--%</span>
-            <a href="{{ path('chart', {'pot': 'C'}) }}" class="view-details">View Details</a>
-        </div>
-    </div>
-</section>
-
-<!-- Charts Section -->
-<section class="charts">
-    <h2>📊 Environmental Data Trends</h2>
-    <div class="chart-container">
-        <div id="temperatureChart"></div>
-    </div>
-    <div class="chart-container">
-        <div id="humidityChart"></div>
-    </div>
-    <div class="chart-container">
-        <div id="pressureChart"></div>
-    </div>
-    <div class="chart-container">
-        <div id="luminanceChart"></div>
-    </div>
-</section>
-
-<footer class="dashboard-footer">
-    <p>© 2025 Plant Monitor System</p>
-</footer>
-
-</div>
 {% block javascripts %}
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-<script>
-let temperatureChart, humidityChart, pressureChart, luminanceChart;
-let chartsInitialized = false;
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        // Use window object to avoid redeclaration errors
+        window.temperatureChart = null;
+        window.humidityChart = null;
+        window.pressureChart = null;
+        window.luminanceChart = null;
+        window.chartsInitialized = false;
 
-async function fetchLatestData() {
-        try {
-            // First, check if we have prefetched data available
-            const prefetchedData = document.getElementById('prefetched-data');
-            if (prefetchedData) {
-                const latestData = {
-                    temperature: parseFloat(prefetchedData.dataset.temperature) || null,
-                    humidity: parseFloat(prefetchedData.dataset.humidity) || null,
-                    pressure: parseFloat(prefetchedData.dataset.pressure) || null,
-                    luminance: parseFloat(prefetchedData.dataset.luminance) || null,
-                    moisture_a: parseFloat(prefetchedData.dataset.moistureA) || null,
-                    moisture_b: parseFloat(prefetchedData.dataset.moistureB) || null,
-                    moisture_c: parseFloat(prefetchedData.dataset.moistureC) || null
-                };
-                
-                // Only use prefetched data if at least some values are available
-                const hasValues = Object.values(latestData).some(value => value !== null);
-                
-                if (hasValues) {
-                    console.log("📊 Using prefetched data:", latestData);
-                    updateUIValues(latestData);
+        async function fetchLatestData() {
+            try {
+                // First, check if we have prefetched data available
+                const prefetchedData = document.getElementById('prefetched-data');
+                if (prefetchedData) {
+                    const latestData = {
+                        temperature: parseFloat(prefetchedData.dataset.temperature) || null,
+                        humidity: parseFloat(prefetchedData.dataset.humidity) || null,
+                        pressure: parseFloat(prefetchedData.dataset.pressure) || null,
+                        luminance: parseFloat(prefetchedData.dataset.luminance) || null,
+                        moisture_a: parseFloat(prefetchedData.dataset.moistureA) || null,
+                        moisture_b: parseFloat(prefetchedData.dataset.moistureB) || null,
+                        moisture_c: parseFloat(prefetchedData.dataset.moistureC) || null
+                    };
                     
-                    // Clear the prefetched data to ensure fresh fetch next time
+                    // Only use prefetched data if at least some values are available
+                    const hasValues = Object.values(latestData).some(value => value !== null);
+                    
+                    if (hasValues) {
+                        console.log("📊 Using prefetched data:", latestData);
+                        updateUIValues(latestData);
+                    }
+                    
+                    // Important: Don't remove the prefetched data element until we've successfully
+                    // fetched new data, to ensure we always have fallback values
+                }
+                
+                // Fetch fresh data from API
+                const response = await fetch('/influxdb/latest');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log("📊 Latest Data Received:", data);
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    console.error("❌ No valid data received!");
+                    return;
+                }
+
+                // Process the data to get the latest values
+                const latestData = {};
+                data.forEach(entry => {
+                    latestData[entry.measurement] = entry.value;
+                });
+
+                // Update the UI elements with the latest values
+                updateUIValues(latestData);
+                
+                // Only now remove the prefetched data element
+                if (prefetchedData) {
                     prefetchedData.remove();
                 }
+            } catch (error) {
+                console.error("❌ Error fetching latest data:", error);
+            }
+        }
+
+        function updateUIValues(latestData) {
+            // Keep track of the current values to preserve them if new value is missing
+            const currentValues = {
+                temperature: document.getElementById("temperature").innerText,
+                humidity: document.getElementById("humidity").innerText,
+                pressure: document.getElementById("pressure").innerText,
+                luminance: document.getElementById("luminance").innerText,
+                potA: document.getElementById("potA").innerText,
+                potB: document.getElementById("potB").innerText,
+                potC: document.getElementById("potC").innerText
+            };
+            
+            // Update environmental values - only if we have new values
+            if (latestData.temperature) {
+                document.getElementById("temperature").innerText = latestData.temperature.toFixed(1) + "°C";
             }
             
-            // Fetch fresh data from API
-            const response = await fetch('/influxdb/latest');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+            if (latestData.humidity) {
+                document.getElementById("humidity").innerText = latestData.humidity.toFixed(1) + "%";
             }
             
-            const data = await response.json();
-            console.log("📊 Latest Data Received:", data);
-
-            if (!Array.isArray(data) || data.length === 0) {
-                console.error("❌ No valid data received!");
-                return;
+            if (latestData.pressure) {
+                document.getElementById("pressure").innerText = latestData.pressure.toFixed(1) + " hPa";
+            }
+            
+            // Special handling for luminance which seems to be causing issues
+            if (latestData.luminance !== undefined && latestData.luminance !== null) {
+                // Only update if the value is reasonable (not 0.0 unless it's actually 0)
+                // Most luminance sensors don't read exactly 0.0 during daytime
+                const isDaytime = new Date().getHours() > 6 && new Date().getHours() < 18;
+                
+                if (latestData.luminance > 0.1 || !isDaytime) {
+                    document.getElementById("luminance").innerText = latestData.luminance.toFixed(1) + " lux";
+                } else if (currentValues.luminance !== "--" && !currentValues.luminance.startsWith("0.0")) {
+                    // Keep the current non-zero value if we have one during daytime
+                    console.log("Keeping current non-zero luminance value:", currentValues.luminance);
+                } else {
+                    // If all else fails, show the value we got
+                    document.getElementById("luminance").innerText = latestData.luminance.toFixed(1) + " lux";
+                }
+            } else if (currentValues.luminance !== "--") {
+                // Keep the current value if we have one and it's not the default "--"
+                console.log("Keeping current luminance value:", currentValues.luminance);
             }
 
-            // Process the data to get the latest values
-            const latestData = {};
-            data.forEach(entry => {
-                latestData[entry.measurement] = entry.value;
+            // Update pot moisture values - only if we have new values
+            if (latestData.moisture_a) {
+                document.getElementById("potA").innerText = latestData.moisture_a.toFixed(1) + "%";
+                updateMoistureClasses("potA", latestData.moisture_a);
+            }
+            
+            if (latestData.moisture_b) {
+                document.getElementById("potB").innerText = latestData.moisture_b.toFixed(1) + "%";
+                updateMoistureClasses("potB", latestData.moisture_b);
+            }
+            
+            if (latestData.moisture_c) {
+                document.getElementById("potC").innerText = latestData.moisture_c.toFixed(1) + "%";
+                updateMoistureClasses("potC", latestData.moisture_c);
+            }
+            
+            // Log which values were updated
+            console.log("Updated UI with values:", {
+                temperature: latestData.temperature ? latestData.temperature.toFixed(1) : 'not updated',
+                humidity: latestData.humidity ? latestData.humidity.toFixed(1) : 'not updated',
+                pressure: latestData.pressure ? latestData.pressure.toFixed(1) : 'not updated',
+                luminance: latestData.luminance ? latestData.luminance.toFixed(1) : 'not updated',
+                moisture_a: latestData.moisture_a ? latestData.moisture_a.toFixed(1) : 'not updated',
+                moisture_b: latestData.moisture_b ? latestData.moisture_b.toFixed(1) : 'not updated',
+                moisture_c: latestData.moisture_c ? latestData.moisture_c.toFixed(1) : 'not updated'
             });
-
-            // Update the UI elements with the latest values
-            updateUIValues(latestData);
-        } catch (error) {
-            console.error("❌ Error fetching latest data:", error);
         }
-    }
 
-    function updateUIValues(latestData) {
-        // Update environmental values
-        document.getElementById("temperature").innerText = latestData.temperature ? 
-            latestData.temperature.toFixed(1) + "°C" : "--";
-        document.getElementById("humidity").innerText = latestData.humidity ? 
-            latestData.humidity.toFixed(1) + "%" : "--";
-        document.getElementById("pressure").innerText = latestData.pressure ? 
-            latestData.pressure.toFixed(1) + " hPa" : "--";
-        document.getElementById("luminance").innerText = latestData.luminance ? 
-            latestData.luminance.toFixed(1) + " lux" : "--";
+        function updateMoistureClasses(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (!element || value === undefined) return;
 
-        // Update pot moisture values
-        document.getElementById("potA").innerText = latestData.moisture_a ? 
-            latestData.moisture_a.toFixed(1) + "%" : "--";
-        document.getElementById("potB").innerText = latestData.moisture_b ? 
-            latestData.moisture_b.toFixed(1) + "%" : "--";
-        document.getElementById("potC").innerText = latestData.moisture_c ? 
-            latestData.moisture_c.toFixed(1) + "%" : "--";
-
-        // Update the UI classes based on moisture levels
-        updateMoistureClasses("potA", latestData.moisture_a);
-        updateMoistureClasses("potB", latestData.moisture_b);
-        updateMoistureClasses("potC", latestData.moisture_c);
-    }
-
-    function updateMoistureClasses(elementId, value) {
-        const element = document.getElementById(elementId);
-        if (!element || value === undefined) return;
-
-        element.classList.remove("low-moisture", "medium-moisture", "high-moisture");
-        
-        if (value < 30) {
-            element.classList.add("low-moisture");
-        } else if (value < 60) {
-            element.classList.add("medium-moisture");
-        } else {
-            element.classList.add("high-moisture");
+            element.classList.remove("low-moisture", "medium-moisture", "high-moisture");
+            
+            if (value < 30) {
+                element.classList.add("low-moisture");
+            } else if (value < 60) {
+                element.classList.add("medium-moisture");
+            } else {
+                element.classList.add("high-moisture");
+            }
         }
-    }
 
-    async function fetchHistoricalData() {
-        try {
-            const response = await fetch('/influxdb/history');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log("📊 Historical Data Received:", data);
-            
-            if (!Array.isArray(data) || data.length === 0) {
-                console.error("❌ No historical data received!");
-                return;
-            }
+        async function fetchHistoricalData() {
+            try {
+                const response = await fetch('/influxdb/history');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log("📊 Historical Data Received:", data);
+                
+                if (!Array.isArray(data) || data.length === 0) {
+                    console.error("❌ No historical data received!");
+                    return;
+                }
 
-            // Extract and format the data for each measurement
-            const processedData = {
-                temperature: extractSortedData(data, "temperature"),
-                humidity: extractSortedData(data, "humidity"),
-                pressure: extractSortedData(data, "pressure"),
-                luminance: extractSortedData(data, "luminance")
+                // Extract and format the data for each measurement
+                const processedData = {
+                    temperature: extractSortedData(data, "temperature"),
+                    humidity: extractSortedData(data, "humidity"),
+                    pressure: extractSortedData(data, "pressure"),
+                    luminance: extractSortedData(data, "luminance")
+                };
+
+                // Initialize or update the charts
+                if (!window.chartsInitialized) {
+                    initializeCharts(processedData);
+                    window.chartsInitialized = true;
+                } else {
+                    updateCharts(processedData);
+                }
+            } catch (error) {
+                console.error("❌ Error fetching historical data:", error);
+            }
+        }
+
+        function extractSortedData(data, measurement) {
+            return data.filter(d => d.measurement === measurement)
+                      .map(d => ({
+                          x: new Date(d.time).getTime(),
+                          y: d.value
+                      }))
+                      .sort((a, b) => a.x - b.x);
+        }
+
+        function initializeCharts(data) {
+            // Temperature chart options
+            const temperatureOptions = {
+                series: [{
+                    name: 'Temperature (°C)',
+                    data: data.temperature
+                }],
+                chart: {
+                    type: 'area',
+                    height: 300,
+                    fontFamily: 'Poppins, sans-serif',
+                    toolbar: {
+                        show: false
+                    },
+                    zoom: {
+                        enabled: false
+                    }
+                },
+                dataLabels: {
+                    enabled: false
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 2
+                },
+                colors: ['#FF5252'],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.3,
+                        stops: [0, 100]
+                    }
+                },
+                xaxis: {
+                    type: 'datetime',
+                    labels: {
+                        datetimeUTC: false,
+                        formatter: function(val) {
+                            return new Date(val).toLocaleDateString();
+                        }
+                    }
+                },
+                yaxis: {
+                    title: {
+                        text: 'Temperature (°C)'
+                    },
+                    labels: {
+                        formatter: function(val) {
+                            return val.toFixed(1);
+                        }
+                    },
+                    min: 0,
+                    decimalsInFloat: 1
+                },
+                tooltip: {
+                    x: {
+                        format: 'dd MMM yyyy HH:mm'
+                    },
+                    y: {
+                        formatter: function(val) {
+                            return val.toFixed(1) + '°C';
+                        }
+                    }
+                }
             };
 
-            // Initialize or update the charts
-            if (!chartsInitialized) {
-                initializeCharts(processedData);
-                chartsInitialized = true;
-            } else {
-                updateCharts(processedData);
-            }
-        } catch (error) {
-            console.error("❌ Error fetching historical data:", error);
-        }
-    }
-
-    function extractSortedData(data, measurement) {
-        return data.filter(d => d.measurement === measurement)
-                  .map(d => ({
-                      x: new Date(d.time).getTime(),
-                      y: d.value
-                  }))
-                  .sort((a, b) => a.x - b.x);
-    }
-
-    function initializeCharts(data) {
-        // Temperature chart options
-        const temperatureOptions = {
-            series: [{
-                name: 'Temperature (°C)',
-                data: data.temperature
-            }],
-            chart: {
-                type: 'area',
-                height: 300,
-                fontFamily: 'Poppins, sans-serif',
-                toolbar: {
-                    show: false
+            // Humidity chart options
+            const humidityOptions = {
+                series: [{
+                    name: 'Humidity (%)',
+                    data: data.humidity
+                }],
+                chart: {
+                    type: 'area',
+                    height: 300,
+                    fontFamily: 'Poppins, sans-serif',
+                    toolbar: {
+                        show: false
+                    },
+                    zoom: {
+                        enabled: false
+                    }
                 },
-                zoom: {
+                dataLabels: {
                     enabled: false
-                }
-            },
-            dataLabels: {
-                enabled: false
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2
-            },
-            colors: ['#FF5252'],
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shadeIntensity: 1,
-                    opacityFrom: 0.7,
-                    opacityTo: 0.3,
-                    stops: [0, 100]
-                }
-            },
-            xaxis: {
-                type: 'datetime',
-                labels: {
-                    formatter: function(val) {
-                        return new Date(val).toLocaleDateString();
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 2
+                },
+                colors: ['#4D8AF0'],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.3,
+                        stops: [0, 100]
+                    }
+                },
+                xaxis: {
+                    type: 'datetime',
+                    labels: {
+                        datetimeUTC: false,
+                        formatter: function(val) {
+                            return new Date(val).toLocaleDateString();
+                        }
+                    }
+                },
+                yaxis: {
+                    title: {
+                        text: 'Humidity (%)'
+                    },
+                    labels: {
+                        formatter: function(val) {
+                            return val.toFixed(1);
+                        }
+                    },
+                    min: 0,
+                    decimalsInFloat: 1
+                },
+                tooltip: {
+                    x: {
+                        format: 'dd MMM yyyy HH:mm'
+                    },
+                    y: {
+                        formatter: function(val) {
+                            return val.toFixed(1) + '%';
+                        }
                     }
                 }
-            },
-            yaxis: {
-                title: {
-                    text: 'Temperature (°C)'
-                }
-            },
-            tooltip: {
-                x: {
-                    format: 'dd MMM yyyy HH:mm'
-                }
-            }
-        };
+            };
 
-        // Humidity chart options
-        const humidityOptions = {
-            series: [{
-                name: 'Humidity (%)',
-                data: data.humidity
-            }],
-            chart: {
-                type: 'area',
-                height: 300,
-                fontFamily: 'Poppins, sans-serif',
-                toolbar: {
-                    show: false
+            // Pressure chart options
+            const pressureOptions = {
+                series: [{
+                    name: 'Pressure (hPa)',
+                    data: data.pressure
+                }],
+                chart: {
+                    type: 'area',
+                    height: 300,
+                    fontFamily: 'Poppins, sans-serif',
+                    toolbar: {
+                        show: false
+                    },
+                    zoom: {
+                        enabled: false
+                    }
                 },
-                zoom: {
+                dataLabels: {
                     enabled: false
-                }
-            },
-            dataLabels: {
-                enabled: false
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2
-            },
-            colors: ['#4D8AF0'],
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shadeIntensity: 1,
-                    opacityFrom: 0.7,
-                    opacityTo: 0.3,
-                    stops: [0, 100]
-                }
-            },
-            xaxis: {
-                type: 'datetime',
-                labels: {
-                    formatter: function(val) {
-                        return new Date(val).toLocaleDateString();
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 2
+                },
+                colors: ['#43A047'],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.3,
+                        stops: [0, 100]
+                    }
+                },
+                xaxis: {
+                    type: 'datetime',
+                    labels: {
+                        datetimeUTC: false,
+                        formatter: function(val) {
+                            return new Date(val).toLocaleDateString();
+                        }
+                    }
+                },
+                yaxis: {
+                    title: {
+                        text: 'Pressure (hPa)'
+                    },
+                    labels: {
+                        formatter: function(val) {
+                            return val.toFixed(1);
+                        }
+                    },
+                    decimalsInFloat: 1
+                },
+                tooltip: {
+                    x: {
+                        format: 'dd MMM yyyy HH:mm'
+                    },
+                    y: {
+                        formatter: function(val) {
+                            return val.toFixed(1) + ' hPa';
+                        }
                     }
                 }
-            },
-            yaxis: {
-                title: {
-                    text: 'Humidity (%)'
-                }
-            },
-            tooltip: {
-                x: {
-                    format: 'dd MMM yyyy HH:mm'
-                }
-            }
-        };
+            };
 
-        // Pressure chart options
-        const pressureOptions = {
-            series: [{
-                name: 'Pressure (hPa)',
-                data: data.pressure
-            }],
-            chart: {
-                type: 'area',
-                height: 300,
-                fontFamily: 'Poppins, sans-serif',
-                toolbar: {
-                    show: false
+            // Luminance chart options
+            const luminanceOptions = {
+                series: [{
+                    name: 'Luminance (lux)',
+                    data: data.luminance
+                }],
+                chart: {
+                    type: 'area',
+                    height: 300,
+                    fontFamily: 'Poppins, sans-serif',
+                    toolbar: {
+                        show: false
+                    },
+                    zoom: {
+                        enabled: false
+                    }
                 },
-                zoom: {
+                dataLabels: {
                     enabled: false
-                }
-            },
-            dataLabels: {
-                enabled: false
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2
-            },
-            colors: ['#43A047'],
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shadeIntensity: 1,
-                    opacityFrom: 0.7,
-                    opacityTo: 0.3,
-                    stops: [0, 100]
-                }
-            },
-            xaxis: {
-                type: 'datetime',
-                labels: {
-                    formatter: function(val) {
-                        return new Date(val).toLocaleDateString();
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 2
+                },
+                colors: ['#FB8C00'],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.3,
+                        stops: [0, 100]
+                    }
+                },
+                xaxis: {
+                    type: 'datetime',
+                    labels: {
+                        datetimeUTC: false,
+                        formatter: function(val) {
+                            return new Date(val).toLocaleDateString();
+                        }
+                    }
+                },
+                yaxis: {
+                    title: {
+                        text: 'Luminance (lux)'
+                    },
+                    labels: {
+                        formatter: function(val) {
+                            return val.toFixed(1);
+                        }
+                    },
+                    min: 0,
+                    decimalsInFloat: 1
+                },
+                tooltip: {
+                    x: {
+                        format: 'dd MMM yyyy HH:mm'
+                    },
+                    y: {
+                        formatter: function(val) {
+                            return val.toFixed(1) + ' lux';
+                        }
                     }
                 }
-            },
-            yaxis: {
-                title: {
-                    text: 'Pressure (hPa)'
-                }
-            },
-            tooltip: {
-                x: {
-                    format: 'dd MMM yyyy HH:mm'
-                }
+            };
+
+            // Destroy existing charts if they exist
+            if (window.temperatureChart) window.temperatureChart.destroy();
+            if (window.humidityChart) window.humidityChart.destroy();
+            if (window.pressureChart) window.pressureChart.destroy();
+            if (window.luminanceChart) window.luminanceChart.destroy();
+
+            // Initialize the charts
+            window.temperatureChart = new ApexCharts(document.querySelector("#temperatureChart"), temperatureOptions);
+            window.humidityChart = new ApexCharts(document.querySelector("#humidityChart"), humidityOptions);
+            window.pressureChart = new ApexCharts(document.querySelector("#pressureChart"), pressureOptions);
+            window.luminanceChart = new ApexCharts(document.querySelector("#luminanceChart"), luminanceOptions);
+
+            window.temperatureChart.render();
+            window.humidityChart.render();
+            window.pressureChart.render();
+            window.luminanceChart.render();
+        }
+
+        function updateCharts(data) {
+            if (window.temperatureChart) {
+                window.temperatureChart.updateSeries([{
+                    name: 'Temperature (°C)',
+                    data: data.temperature
+                }]);
             }
-        };
 
-        // Luminance chart options
-        const luminanceOptions = {
-            series: [{
-                name: 'Luminance (lux)',
-                data: data.luminance
-            }],
-            chart: {
-                type: 'area',
-                height: 300,
-                fontFamily: 'Poppins, sans-serif',
-                toolbar: {
-                    show: false
-                },
-                zoom: {
-                    enabled: false
-                }
-            },
-            dataLabels: {
-                enabled: false
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2
-            },
-            colors: ['#FB8C00'],
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shadeIntensity: 1,
-                    opacityFrom: 0.7,
-                    opacityTo: 0.3,
-                    stops: [0, 100]
-                }
-            },
-            xaxis: {
-                type: 'datetime',
-                labels: {
-                    formatter: function(val) {
-                        return new Date(val).toLocaleDateString();
-                    }
-                }
-            },
-            yaxis: {
-                title: {
-                    text: 'Luminance (lux)'
-                }
-            },
-            tooltip: {
-                x: {
-                    format: 'dd MMM yyyy HH:mm'
-                }
+            if (window.humidityChart) {
+                window.humidityChart.updateSeries([{
+                    name: 'Humidity (%)',
+                    data: data.humidity
+                }]);
             }
-        };
 
-        // Initialize the charts
-        temperatureChart = new ApexCharts(document.querySelector("#temperatureChart"), temperatureOptions);
-        humidityChart = new ApexCharts(document.querySelector("#humidityChart"), humidityOptions);
-        pressureChart = new ApexCharts(document.querySelector("#pressureChart"), pressureOptions);
-        luminanceChart = new ApexCharts(document.querySelector("#luminanceChart"), luminanceOptions);
+            if (window.pressureChart) {
+                window.pressureChart.updateSeries([{
+                    name: 'Pressure (hPa)',
+                    data: data.pressure
+                }]);
+            }
 
-        temperatureChart.render();
-        humidityChart.render();
-        pressureChart.render();
-        luminanceChart.render();
-    }
-
-    function updateCharts(data) {
-        if (temperatureChart) {
-            temperatureChart.updateSeries([{
-                name: 'Temperature (°C)',
-                data: data.temperature
-            }]);
+            if (window.luminanceChart) {
+                window.luminanceChart.updateSeries([{
+                    name: 'Luminance (lux)',
+                    data: data.luminance
+                }]);
+            }
         }
 
-        if (humidityChart) {
-            humidityChart.updateSeries([{
-                name: 'Humidity (%)',
-                data: data.humidity
-            }]);
-        }
-
-        if (pressureChart) {
-            pressureChart.updateSeries([{
-                name: 'Pressure (hPa)',
-                data: data.pressure
-            }]);
-        }
-
-        if (luminanceChart) {
-            luminanceChart.updateSeries([{
-                name: 'Luminance (lux)',
-                data: data.luminance
-            }]);
-        }
-    }
-
-    // Initialize and set up data fetch intervals
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log("✅ Dashboard initialized");
-        
-        // Fetch data immediately when the page loads
-        fetchLatestData();
-        fetchHistoricalData();
-        
-        // Set up intervals for periodic updates
-        setInterval(fetchLatestData, 60000);
-        setInterval(fetchHistoricalData, 300000);
-    });
-</script>
-
+        // Initialize and set up data fetch intervals
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("✅ Dashboard initialized");
+            
+            // Fetch data immediately when the page loads
+            fetchLatestData();
+            fetchHistoricalData();
+            
+            // Set up intervals for periodic updates
+            setInterval(fetchLatestData, 60000);
+            setInterval(fetchHistoricalData, 300000);
+        });
+    </script>
 {% endblock %}
 {% endblock %}
