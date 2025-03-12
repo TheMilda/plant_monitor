@@ -43,7 +43,7 @@ class InfluxDBService
         
         $query = <<<EOT
         from(bucket: "{$this->influxdbBucket}")
-            |> range(start: -30d) 
+            |> range(start: 2025-03-08T00:00:00Z) 
             |> filter(fn: (r) => r["_measurement"] == "temperature" or 
                                  r["_measurement"] == "humidity" or 
                                  r["_measurement"] == "pressure" or 
@@ -157,7 +157,7 @@ class InfluxDBService
         
         $query = <<<EOT
             from(bucket: "{$this->influxdbBucket}")
-                |> range(start: -{$days}d) 
+                |> range(start: 2025-03-08T00:00:00Z) 
                 |> filter(fn: (r) => r["_measurement"] == "temperature" or 
                                      r["_measurement"] == "humidity" or 
                                      r["_measurement"] == "pressure" or 
